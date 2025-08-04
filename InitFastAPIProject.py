@@ -1,4 +1,5 @@
 import os
+import random
 from re import sub
 import subprocess
 import sys
@@ -64,9 +65,19 @@ def create_structure(base_path="."):
                 pass  # Laisser vide
             # Créer config.py dans core
             config_path = os.path.join(base_path, "app/core/config.py")
+            secret_key = random.SystemRandom().getrandbits(256)  # Générer une clé secrète aléatoire
+            db_username = "postgres"
+            db_password = "postgres"
+            db_database = "postgres"
             with open(config_path, "w", encoding="utf-8") as f:
-                f.write('''from pydantic import BaseSettings\n\nclass Settings(BaseSettings):\n    PROJECT_NAME: str = "FastAPI Project"\n    VERSION: str = "0.1.0"\n    DEBUG: bool = True\n    DATABASE_URL: str = "sqlite:///./test.db"\n    SECRET_KEY: str = "changeme"\n\n    class Config:\n        env_file = ".env"\n\nsettings = Settings()\n''')
+                f.write(f'''from pydantic_settings import BaseSettings\n\nclass Settings(BaseSettings):\n    PROJECT_NAME: str = "FastAPI Project"\n    VERSION: str = "0.1.0"\n    DEBUG: bool = True\n    DATABASE_URL: str = "localhost:5432"\n    SECRET_KEY: str = "{secret_key}"\n    DB_USERNAME: str = "{db_username}"\n    DB_PASSWORD: str = "{db_password}"\n    DB_DATABASE: str = "{db_database}"\n\n    class Config:\n        env_file = ".env"\n\nsettings = Settings()\n''')
             print(f"📄 Fichier créé : {config_path}")
+
+            # Générer database.py dans core
+            database_path = os.path.join(base_path, "app/core/database.py")
+            with open(database_path, "w", encoding="utf-8") as f:
+                f.write('''from sqlalchemy import create_engine\nfrom sqlalchemy.orm import sessionmaker\nfrom app.core.config import settings\n\n# Construction de l\'URL de connexion à la BDD de façon générique\nDATABASE_URL = settings.DATABASE_URL\nif hasattr(settings, "DB_USERNAME") and hasattr(settings, "DB_PASSWORD") and hasattr(settings, "DB_DATABASE"):\n    # Si DATABASE_URL ne contient pas déjà les infos, on construit une URL PostgreSQL par défaut\n    if "postgresql" not in DATABASE_URL:\n        DATABASE_URL = f"postgresql://{settings.DB_USERNAME}:{settings.DB_PASSWORD}@{settings.DATABASE_URL}/{settings.DB_DATABASE}"\n\nengine = create_engine(DATABASE_URL, echo=settings.DEBUG)\nSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)\n\ndef get_db():\n    db = SessionLocal()\n    try:\n        yield db\n    finally:\n        db.close()\n''')
+            print(f"📄 Fichier créé : {database_path}")
         # Générer un README.md avec infos sur l'architecture
         elif file == "README.md":
             with open(file_path, "w", encoding="utf-8") as f:
@@ -79,7 +90,7 @@ def create_structure(base_path="."):
     # Remplir requirements.txt
     req_path = os.path.join(base_path, "requirements.txt")
     with open(req_path, "w") as f:
-        f.write("\n".join(requirements))
+            f.write("\n".join(requirements + ["pydantic-settings"]))
     print(f"✅ requirements.txt rempli ({len(requirements)} packages)")
 
     # Créer un environnement virtuel
@@ -95,10 +106,22 @@ def create_structure(base_path="."):
         pip_executable = os.path.join(venv_path, "bin", "pip")
         python_executable = os.path.join(venv_path, "bin", "python")
     subprocess.run([pip_executable, "install", "-r", req_path])
-    # subprocess.run([python_executable, "-m", "pip", "install", "-r", req_path])
 
     print(f"✅ Dépendances installées dans l'environnement virtuel ({len(requirements)} packages)")
 
+    # Création d'un fichier .bat pour lancer le projet
+    bat_content = f'@echo off\ncd /d "{base_path}"\n"{python_executable}" -m uvicorn app.main:app --reload'
+    bat_path = os.path.join(base_path, "run.bat")
+    with open(bat_path, "w", encoding="utf-8") as f:
+        f.write(bat_content)
+    print(f"📄 Fichier de lancement créé : {bat_path}")
+
+    # Création d'un fichier .sh pour lancer le projet sur Unix
+    sh_content = f'#!/bin/bash\ncd "{base_path}"\n"{python_executable}" -m uvicorn app.main:app --reload'
+    sh_path = os.path.join(base_path, "run.sh")
+    with open(sh_path, "w", encoding="utf-8") as f:
+        f.write(sh_content)
+    print(f"📄 Fichier de lancement créé : {sh_path}")
 
     print("🔧 Structure du projet créée avec succès !")
 
