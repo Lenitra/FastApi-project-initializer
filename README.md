@@ -21,8 +21,12 @@ app/
   routes/
     __init__.py
     auth.py
-  schemas/__init__.py
-  sqlmodels/__init__.py
+  schemas/
+    __init__.py
+    user.py
+  sqlmodels/
+    __init__.py
+    user.py
   services/
     __init__.py
     auth.py
