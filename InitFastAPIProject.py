@@ -87,6 +87,18 @@ def create_structure(base_path="."):
     subprocess.run([sys.executable, "-m", "venv", venv_path])
     print(f"🧪 Environnement virtuel créé à : {venv_path}")
 
+    # Installer les requirements dans l'environnement virtuel
+    if os.name == "nt":
+        pip_executable = os.path.join(venv_path, "Scripts", "pip.exe")
+        python_executable = os.path.join(venv_path, "Scripts", "python.exe")
+    else:
+        pip_executable = os.path.join(venv_path, "bin", "pip")
+        python_executable = os.path.join(venv_path, "bin", "python")
+    subprocess.run([pip_executable, "install", "-r", req_path])
+    # subprocess.run([python_executable, "-m", "pip", "install", "-r", req_path])
+
+    print(f"✅ Dépendances installées dans l'environnement virtuel ({len(requirements)} packages)")
+
 
     print("🔧 Structure du projet créée avec succès !")
 
