@@ -46,7 +46,8 @@ requirements = [
     "httpx",
     "pytest",
     "python-jose[cryptography]",
-    "passlib[bcrypt]"
+    "passlib[bcrypt]",
+    "python-multipart",
 ]
 
 def create_structure(base_path="."):
@@ -101,6 +102,7 @@ def create_structure(base_path="."):
         elif file == "app/sqlmodels/user.py":
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write('''from sqlalchemy import Column, Integer, String\nfrom app.sqlmodels import Base\n\nclass UserInDB(Base):\n    __tablename__ = "users"\n    id = Column(Integer, primary_key=True, index=True)\n    email = Column(String, unique=True, index=True)\n    hashed_password = Column(String)\n''')
+
         elif file == "README.md":
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(f"""# FastAPI Project\n\nCe projet a été généré automatiquement.\n\n## Architecture\n\n- **app/** : Contient l'application FastAPI\n    - **main.py** : Point d'entrée de l'application\n    - **core/** : Configuration et paramètres globaux\n        - **config.py** : Paramètres de configuration (Pydantic)\n    - **routes/** : Définition des routes de l'API\n    - **schemas/** : Schémas Pydantic pour validation des données\n    - **sqlmodels/** : Modèles SQLAlchemy ou SQLModel\n    - **services/** : Logique métier et services\n    - **utils/** : Fonctions utilitaires\n    - **middleware/** : Middlewares personnalisés\n- **requirements.txt** : Dépendances Python\n- **.env** : Variables d'environnement\n- **README.md** : Ce fichier\n\n## Lancement rapide\n\n```bash\npython InitFastAPIProject.py\n```\n\n## Démarrer le serveur\n\n```bash\nuvicorn app.main:app --reload\n```\n\n""")
