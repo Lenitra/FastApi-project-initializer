@@ -44,6 +44,7 @@ requirements = [
 ]
 
 def create_structure(base_path="."):
+
     print("🔧 Initialisation du projet FastAPI...")
 
     # Créer les dossiers
@@ -93,51 +94,81 @@ def create_structure(base_path="."):
             f.write("\n".join(requirements + ["pydantic-settings"]))
     print(f"✅ requirements.txt rempli ({len(requirements)} packages)")
 
+    # Générer un .gitignore
+    gitignore_path = os.path.join(base_path, ".gitignore")
+    gitignore_content = """# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+venv/
+.env
+.env.*
+*.sqlite3
+*.db
+*.log
+*.pot
+*.pyc
+*.mypy_cache/
+.pytest_cache/
+.vscode/
+dist/
+build/
+*.egg-info/
+*.egg
+.DS_Store
+node_modules/
+coverage/
+htmlcov/
+.idea/
+/.history/
+    """
+    with open(gitignore_path, "w", encoding="utf-8") as f:
+        f.write(gitignore_content)
+    print(f"📄 Fichier créé : {gitignore_path}")
+
     # Créer un environnement virtuel
     venv_path = os.path.join(base_path, "venv")
     subprocess.run([sys.executable, "-m", "venv", venv_path])
     print(f"🧪 Environnement virtuel créé à : {venv_path}")
 
-    # Installer les requirements dans l'environnement virtuel
+    # Récupérer le chemin de l'exécutable python
     if os.name == "nt":
-        pip_executable = os.path.join(venv_path, "Scripts", "pip.exe")
-        python_executable = os.path.join(venv_path, "Scripts", "python.exe")
+        python_executable = os.path.join("../",venv_path, "Scripts", "python.exe")
     else:
-        pip_executable = os.path.join(venv_path, "bin", "pip")
-        python_executable = os.path.join(venv_path, "bin", "python")
-    subprocess.run([pip_executable, "install", "-r", req_path])
+        python_executable = os.path.join("../",venv_path, "bin", "python")
 
-    print(f"✅ Dépendances installées dans l'environnement virtuel ({len(requirements)} packages)")
 
     # Création d'un fichier .bat pour lancer le projet
-    bat_content = f'@echo off\ncd /d "{base_path}"\n"{python_executable}" -m uvicorn app.main:app --reload'
+    bat_content = f'@echo off\n"{python_executable}" -m uvicorn app.main:app --reload'
     bat_path = os.path.join(base_path, "run.bat")
     with open(bat_path, "w", encoding="utf-8") as f:
         f.write(bat_content)
     print(f"📄 Fichier de lancement créé : {bat_path}")
 
+
     # Création d'un fichier .sh pour lancer le projet sur Unix
-    sh_content = f'#!/bin/bash\ncd "{base_path}"\n"{python_executable}" -m uvicorn app.main:app --reload'
+    sh_content = f'#!/bin/bash\n"{python_executable}" -m uvicorn app.main:app --reload'
     sh_path = os.path.join(base_path, "run.sh")
     with open(sh_path, "w", encoding="utf-8") as f:
         f.write(sh_content)
     print(f"📄 Fichier de lancement créé : {sh_path}")
 
+
+    # Création d'un fichier setup.bat qui installe les dépendances et qui active l'environnement
+    setup_bat_path = os.path.join(base_path, "setup.bat")
+    setup_bat_content = (
+        "@echo off\r\n"
+        "call venv\\Scripts\\activate.bat\r\n"
+        "pip install -r requirements.txt\r\n"
+        "echo Environnement virtuel activé et dépendances installées.\r\n"
+    )
+    with open(setup_bat_path, "w", encoding="utf-8") as f:
+        f.write(setup_bat_content)
+    print(f"📄 Fichier setup.bat créé : {setup_bat_path}")
+
+
     print("🔧 Structure du projet créée avec succès !")
-
-
-    # Installer les requirements avec le bon chemin pip
-    if os.name == "nt":
-        pip_executable = os.path.join(venv_path, "Scripts", "pip.exe")
-        python_executable = os.path.join(venv_path, "Scripts", "python.exe")
-    else:
-        pip_executable = os.path.join(venv_path, "bin", "pip")
-        python_executable = os.path.join(venv_path, "bin", "python")
-    os.system(f'"{pip_executable}" install -r "{req_path}"')
-
-    # Lancer l'application FastAPI avec le python du venv
-    main_py = os.path.join(base_path, "app", "main.py")
-    os.system(f'"{python_executable}" "{main_py}"')
 
 
 if __name__ == "__main__":
