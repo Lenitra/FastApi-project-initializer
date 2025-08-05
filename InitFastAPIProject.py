@@ -50,7 +50,8 @@ requirements = [
     "httpx",
     "pytest",
     "python-jose[cryptography]",
-    "passlib[bcrypt]"
+    "passlib[bcrypt]",
+    "python-multipart",
 ]
 
 def create_structure(base_path="."):
