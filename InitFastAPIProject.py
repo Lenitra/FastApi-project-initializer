@@ -13,6 +13,7 @@ folders = [
     "app/sqlmodels",
     "app/services",
     "app/utils",
+    "app/utils/dataset",
     "app/middleware",
 ]
 
@@ -21,10 +22,17 @@ files = [
     "app/main.py",
     "app/core/__init__.py",
     "app/routes/__init__.py",
+    "app/routes/auth.py",
     "app/schemas/__init__.py",
+    "app/schemas/user.py",
+    "app/schemas/token.py",
     "app/sqlmodels/__init__.py",
+    "app/sqlmodels/user.py",
     "app/services/__init__.py",
+    "app/services/auth.py",
     "app/utils/__init__.py",
+    "app/utils/dataset/__init__.py",
+    "app/utils/dataset/users.py",
     "app/middleware/__init__.py",
     ".env",
     "requirements.txt",
@@ -40,7 +48,9 @@ requirements = [
     "alembic",
     "python-dotenv",
     "httpx",
-    "pytest"
+    "pytest",
+    "python-jose[cryptography]",
+    "passlib[bcrypt]"
 ]
 
 def create_structure(base_path="."):
@@ -59,7 +69,7 @@ def create_structure(base_path="."):
         # Remplir main.py automatiquement
         if file == "app/main.py":
             with open(file_path, "w", encoding="utf-8") as f:
-                f.write('''from fastapi import FastAPI\nfrom app.core.config import settings\n\napp = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)\n\n@app.get("/")\ndef read_root():\n    return {"message": f"Welcome to {settings.PROJECT_NAME}!"}\n''')
+                f.write('''from fastapi import FastAPI\nfrom app.core.config import settings\nfrom app.routes.auth import router as auth_router\n\napp = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)\napp.include_router(auth_router, prefix="/auth")\n\n@app.get("/")\ndef read_root():\n    return {"message": f"Welcome to {settings.PROJECT_NAME}!"}\n''')
         # Générer config.py avec valeurs par défaut
         elif file == "app/core/__init__.py":
             with open(file_path, "w", encoding="utf-8") as f:
@@ -71,7 +81,7 @@ def create_structure(base_path="."):
             db_password = "postgres"
             db_database = "postgres"
             with open(config_path, "w", encoding="utf-8") as f:
-                f.write(f'''from pydantic_settings import BaseSettings\n\nclass Settings(BaseSettings):\n    PROJECT_NAME: str = "FastAPI Project"\n    VERSION: str = "0.1.0"\n    DEBUG: bool = True\n    DATABASE_URL: str = "localhost:5432"\n    SECRET_KEY: str = "{secret_key}"\n    DB_USERNAME: str = "{db_username}"\n    DB_PASSWORD: str = "{db_password}"\n    DB_DATABASE: str = "{db_database}"\n\n    class Config:\n        env_file = ".env"\n\nsettings = Settings()\n''')
+                f.write(f'''from pydantic_settings import BaseSettings\n\nclass Settings(BaseSettings):\n    PROJECT_NAME: str = "FastAPI Project"\n    VERSION: str = "0.1.0"\n    DEBUG: bool = True\n    DATABASE_URL: str = "localhost:5432"\n    SECRET_KEY: str = "{secret_key}"\n    ALGORITHM: str = "HS256"\n    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30\n    DB_USERNAME: str = "{db_username}"\n    DB_PASSWORD: str = "{db_password}"\n    DB_DATABASE: str = "{db_database}"\n\n    class Config:\n        env_file = ".env"\n\nsettings = Settings()\n''')
             print(f"📄 Fichier créé : {config_path}")
 
             # Générer database.py dans core
@@ -80,9 +90,30 @@ def create_structure(base_path="."):
                 f.write('''from sqlalchemy import create_engine\nfrom sqlalchemy.orm import sessionmaker\nfrom app.core.config import settings\n\n# Construction de l\'URL de connexion à la BDD de façon générique\nDATABASE_URL = settings.DATABASE_URL\nif hasattr(settings, "DB_USERNAME") and hasattr(settings, "DB_PASSWORD") and hasattr(settings, "DB_DATABASE"):\n    # Si DATABASE_URL ne contient pas déjà les infos, on construit une URL PostgreSQL par défaut\n    if "postgresql" not in DATABASE_URL:\n        DATABASE_URL = f"postgresql://{settings.DB_USERNAME}:{settings.DB_PASSWORD}@{settings.DATABASE_URL}/{settings.DB_DATABASE}"\n\nengine = create_engine(DATABASE_URL, echo=settings.DEBUG)\nSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)\n\ndef get_db():\n    db = SessionLocal()\n    try:\n        yield db\n    finally:\n        db.close()\n''')
             print(f"📄 Fichier créé : {database_path}")
         # Générer un README.md avec infos sur l'architecture
+        elif file == "app/routes/auth.py":
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write('''from datetime import timedelta\nfrom fastapi import APIRouter, Depends, HTTPException, status\nfrom fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm\nfrom jose import JWTError\nfrom app.services.auth import (\n    verify_password,\n    create_access_token,\n    decode_access_token,\n)\nfrom app.core.config import settings\nfrom app.schemas.user import User\nfrom app.schemas.token import Token\nfrom app.sqlmodels.user import UserInDB\nfrom app.utils.dataset.users import get_users\n\nrouter = APIRouter()\noauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")\n\nfake_users_db = get_users()\n\ndef get_user(email: str):\n    return fake_users_db.get(email)\n\ndef authenticate_user(email: str, password: str):\n    user = get_user(email)\n    if not user or not verify_password(password, user.hashed_password):\n        return False\n    return user\n\n@router.post("/token", response_model=Token)\nasync def login(form_data: OAuth2PasswordRequestForm = Depends()):\n    user = authenticate_user(form_data.username, form_data.password)\n    if not user:\n        raise HTTPException(\n            status_code=status.HTTP_401_UNAUTHORIZED,\n            detail="Incorrect email or password",\n        )\n    access_token = create_access_token(\n        data={"sub": user.email},\n        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),\n    )\n    return {"access_token": access_token, "token_type": "bearer"}\n\n@router.get("/users/me", response_model=User)\nasync def read_users_me(token: str = Depends(oauth2_scheme)):\n    credentials_exception = HTTPException(\n        status_code=status.HTTP_401_UNAUTHORIZED,\n        detail="Could not validate credentials",\n        headers={"WWW-Authenticate": "Bearer"},\n    )\n    try:\n        token_data = decode_access_token(token)\n    except JWTError:\n        raise credentials_exception\n    user = get_user(token_data.email)\n    if user is None:\n        raise credentials_exception\n    return User(email=user.email)\n''')
+        elif file == "app/services/auth.py":
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write('''from datetime import datetime, timedelta\nfrom typing import Optional\nfrom jose import jwt, JWTError\nfrom passlib.context import CryptContext\nfrom app.core.config import settings\nfrom app.schemas.token import TokenData\n\npwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")\n\ndef verify_password(plain_password: str, hashed_password: str) -> bool:\n    return pwd_context.verify(plain_password, hashed_password)\n\ndef get_password_hash(password: str) -> str:\n    return pwd_context.hash(password)\n\ndef create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:\n    to_encode = data.copy()\n    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))\n    to_encode.update({"exp": expire})\n    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)\n\ndef decode_access_token(token: str) -> TokenData:\n    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])\n    email: str = payload.get("sub")\n    if email is None:\n        raise JWTError("Missing subject")\n    return TokenData(email=email)\n''')
+        elif file == "app/schemas/user.py":
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write('''from pydantic import BaseModel\n\nclass User(BaseModel):\n    email: str\n''')
+        elif file == "app/schemas/token.py":
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write('''from typing import Optional\nfrom pydantic import BaseModel\n\nclass Token(BaseModel):\n    access_token: str\n    token_type: str\n\nclass TokenData(BaseModel):\n    email: Optional[str] = None\n''')
+        elif file == "app/sqlmodels/__init__.py":
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write('''from sqlalchemy.orm import declarative_base\n\nBase = declarative_base()\n''')
+        elif file == "app/sqlmodels/user.py":
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write('''from sqlalchemy import Column, Integer, String\nfrom app.sqlmodels import Base\n\nclass UserInDB(Base):\n    __tablename__ = "users"\n    id = Column(Integer, primary_key=True, index=True)\n    email = Column(String, unique=True, index=True)\n    hashed_password = Column(String)\n''')
+        elif file == "app/utils/dataset/users.py":
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write('''from app.services.auth import get_password_hash\nfrom app.sqlmodels.user import UserInDB\n\n"""Dataset de test contenant un compte admin par défaut."""\n\ndef get_users():\n    return {\n        "admin@example.com": UserInDB(\n            email="admin@example.com",\n            hashed_password=get_password_hash("admin"),\n        ),\n        "user@example.com": UserInDB(\n            email="user@example.com",\n            hashed_password=get_password_hash("secret"),\n        ),\n    }\n''')
         elif file == "README.md":
             with open(file_path, "w", encoding="utf-8") as f:
-                f.write(f"""# FastAPI Project\n\nCe projet a été généré automatiquement.\n\n## Architecture\n\n- **app/** : Contient l'application FastAPI\n    - **main.py** : Point d'entrée de l'application\n    - **core/** : Configuration et paramètres globaux\n        - **config.py** : Paramètres de configuration (Pydantic)\n    - **routes/** : Définition des routes de l'API\n    - **schemas/** : Schémas Pydantic pour validation des données\n    - **sqlmodels/** : Modèles SQLAlchemy ou SQLModel\n    - **services/** : Logique métier et services\n    - **utils/** : Fonctions utilitaires\n    - **middleware/** : Middlewares personnalisés\n- **requirements.txt** : Dépendances Python\n- **.env** : Variables d'environnement\n- **README.md** : Ce fichier\n\n## Lancement rapide\n\n```bash\npython InitFastAPIProject.py\n```\n\n## Démarrer le serveur\n\n```bash\nuvicorn app.main:app --reload\n```\n\n""")
+                f.write(f"""# FastAPI Project\n\nCe projet a été généré automatiquement.\n\n## Architecture\n\n- **app/** : Contient l'application FastAPI\n    - **main.py** : Point d'entrée de l'application\n    - **core/** : Configuration et paramètres globaux\n        - **config.py** : Paramètres de configuration (Pydantic)\n    - **routes/** : Définition des routes de l'API\n    - **schemas/** : Schémas Pydantic pour validation des données\n    - **sqlmodels/** : Modèles SQLAlchemy ou SQLModel\n    - **services/** : Logique métier et services\n    - **utils/** : Fonctions utilitaires\n        - **dataset/** : Jeu d'essai d'utilisateurs (admin par défaut)\n    - **middleware/** : Middlewares personnalisés\n- **requirements.txt** : Dépendances Python\n- **.env** : Variables d'environnement\n- **README.md** : Ce fichier\n\n## Lancement rapide\n\n```bash\npython InitFastAPIProject.py\n```\n\n## Démarrer le serveur\n\n```bash\nuvicorn app.main:app --reload\n```\n\n""")
         else:
             with open(file_path, "w", encoding="utf-8") as f:
                 pass
