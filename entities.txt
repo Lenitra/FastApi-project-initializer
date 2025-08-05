@@ -1,11 +1,23 @@
-Player
-- money int .min0
-- last_activity date .past .nn
+Satellite
+- name str .max30 .unique
+- launch_date date .past .nn
+- status str .max15 .nn      # ex: OPERATIONAL, OFFLINE, MAINTENANCE, LOST
+- orbit_type str .max15      # ex: LEO, GEO, MEO, HEO
+- lat float .nn              # latitude actuelle
+- lon float .nn              # longitude actuelle
+- operator Operator .fk
+- mission_type str .max20    # ex: Surveillance, Communication, Reconnaissance
+- payloads int .min1         # nombre de charges utiles
 
-Tile
-- x int * .nn
-- y int * .nn .unique
-- owner Player .fk
-- lvl int .min0 .max5
-- bat str .max10
-- units int .min0
+Operator
+- name str .max25 .nn
+- rank str .max20 .nn
+- assigned_satellites int .min0
+- last_check date .past
+
+Alert
+- satellite Satellite .fk
+- detected_at date .nn
+- alert_type str .max25      # ex: DEVIATION, POWER LOSS, INTRUSION, COLLISION RISK
+- severity int .min1 .max5
+- resolved bool .nn

@@ -29,24 +29,42 @@ def get_file_content(file, secret_key=None):
     if file == "app/main.py":
         return '''from fastapi import FastAPI
 from app.core.config import settings
-from app.routes.auth import router as auth_router
-from app.sqlmodels import Base
 from app.core.database import engine
+from app.sqlmodels import Base
 from app.utils.seeds.seed_users import seed_users
 
-# TODO: Modifier ce système et passer sur Alembic
-Base.metadata.drop_all(bind=engine)   # <-- supprime toutes les tables
-Base.metadata.create_all(bind=engine) # <-- recrée toutes les tables
+import pkgutil
+import importlib
+import pathlib
 
+# TODO: passer sur Alembic plutôt que drop/create à chaud
+Base.metadata.drop_all(bind=engine)    # supprime toutes les tables
+Base.metadata.create_all(bind=engine)  # recrée toutes les tables
 seed_users()
 
 app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
-app.include_router(auth_router, prefix="/auth")
+
+# inclusion manuelle du router d'auth
+from app.routes.auth import router as auth_router
+app.include_router(auth_router, prefix="/auth", tags=["auth"])
+
+# découverte dynamique de tous les autres routers
+routes_dir = pathlib.Path(__file__).parent / "routes"
+for module_info in pkgutil.iter_modules([str(routes_dir)]):
+    name = module_info.name
+    if name.startswith("_") or name == "auth":
+        continue
+    module = importlib.import_module(f"app.routes.{name}")
+    router = getattr(module, "router", None)
+    if router:
+        prefix = f"/{name}s"
+        app.include_router(router, prefix=prefix, tags=[name])
 
 @app.get("/")
 def read_root():
     return {"message": f"Welcome to {settings.PROJECT_NAME}!"}
 '''
+
     elif file == "app/sqlmodels/__init__.py":
         return '''from sqlalchemy.orm import declarative_base
 
@@ -339,6 +357,7 @@ def create_setup_script(base_path="."):
     with open(setup_path, "w", encoding="utf-8") as f:
         f.write("""@echo off
 call venv\\Scripts\\activate.bat
+python.exe -m pip install --upgrade pip
 pip install -r requirements.txt
 echo Environnement virtuel activé et dépendances installées.
 """)
@@ -350,15 +369,26 @@ def create_custom_entities(base_path="."):
         filename = entity.lower() + ".py"
         sqlmodels_path = os.path.join(base_path, "app", "sqlmodels", filename)
         schemas_path = os.path.join(base_path, "app", "schemas", filename)
+        routes_path = os.path.join(base_path, "app", "routes", filename)
         with open(sqlmodels_path, "w", encoding="utf-8") as f:
             f.write(generate_sql_schema(entity, entities[entity]))
             print(f"📄 Fichier généré : {sqlmodels_path}")
         with open(schemas_path, "w", encoding="utf-8") as f:
             f.write(generate_schema(entity, entities[entity]))
             print(f"📄 Fichier généré : {schemas_path}")
+        
+        with open(routes_path, "w", encoding="utf-8") as f:
+            f.write(generate_getters_routes(entity, entities[entity]))
+            print(f"📄 Fichier généré : {routes_path}")
+
+
 
 def generate_schema(entity_name:str, attributes:list):
-    schema_content = f"""from pydantic import BaseModel
+    schema_content = f"from pydantic import BaseModel\n"
+    for attr in attributes:
+        if is_custom_type(attr.split()[1]):
+            schema_content += f"\nfrom app.schemas.{attr.split()[1].lower()} import {attr.split()[1]}\n"
+    schema_content+=f"""from datetime import date
 
 class {entity_name}(BaseModel):
 """
@@ -370,15 +400,21 @@ class {entity_name}(BaseModel):
     schema_content += "\n    class Config:\n        from_attributes = True\n"
     return schema_content
 
+def is_custom_type(py_type: str) -> bool:
+    not_custom = ["int", "str", "float", "date", "bool", "list", "dict"]
+    return not any(py_type.startswith(simple_type) for simple_type in not_custom)
+
 def parse_py_types_to_sql_type(py_type: str) -> str:
-    if py_type == "int":
+    if py_type.lower() in ["int", "integer"]:
         return "Integer"
-    elif py_type == "str":
+    elif py_type.lower() in ["str", "string"]:
         return "String"
-    elif py_type == "float":
+    elif py_type.lower() in ["float", "decimal"]:
         return "Float"
-    elif py_type == "date":
+    elif py_type.lower() in ["date", "datetime"]:
         return "Date"
+    elif py_type.lower() in ["bool", "boolean"]:
+        return "Boolean"
     else:
         print()
         print("❓❓❓ Type non reconnu pour l'enregistrement dans la BDD : ")
@@ -386,7 +422,7 @@ def parse_py_types_to_sql_type(py_type: str) -> str:
         return py_type
 
 def generate_sql_schema(entity_name:str, attributes:list):
-    sql_content = f"""from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey
+    sql_content = f"""from sqlalchemy import Column, Integer, String, Date, Boolean, Float, ForeignKey
 from app.sqlmodels import Base
 
 class {entity_name}(Base):
@@ -420,15 +456,26 @@ class {entity_name}(Base):
     sql_content += "\n"
     return sql_content
 
-def generate_getters(entity_name: str, attributes: list) -> str:
-    getters_content = f"""def get_{entity_name.lower()}(db, id: int):
-    return db.query({entity_name}).filter({entity_name}.id == id).first()
-"""
-    for attr in attributes:
-        var_name = attr.split()[0]
-        getters_content += f"""def get_{entity_name.lower()}_{var_name}(db, id: int):
-    return db.query({entity_name}).filter({entity_name}.{var_name} == id).first()
-"""
+def generate_getters_routes(entity_name: str, attributes: list) -> str:
+    return f'''from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from app.core.database import get_db
+from app.sqlmodels.{entity_name.lower()} import {entity_name}
+from app.schemas.{entity_name.lower()} import {entity_name} as {entity_name}Schema
+
+router = APIRouter()
+
+@router.get("/{entity_name.lower()}s", response_model=list[{entity_name}Schema])
+def get_all_{entity_name.lower()}s(db: Session = Depends(get_db)):
+    return db.query({entity_name}).all()
+
+@router.get("/{entity_name.lower()}s/{{id}}", response_model={entity_name}Schema)
+def get_{entity_name.lower()}_by_id(id: int, db: Session = Depends(get_db)):
+    obj = db.query({entity_name}).filter({entity_name}.id == id).first()
+    if not obj:
+        raise HTTPException(status_code=404, detail=f"{entity_name} not found")
+    return obj
+'''
     return getters_content
 
 def init_fastapi_project(base_path="."):
