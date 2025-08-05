@@ -1,0 +1,13 @@
+Player
+- id string -0 +100
+- money int -0
+- last_activity date .past .nn
+
+Tile
+- id int *
+- x int * .nn
+- y int * .nn 
+- owner Player
+- lvl int -0
+- bat string
+- units int -0
