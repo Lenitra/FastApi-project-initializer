@@ -3,78 +3,42 @@ import random
 import subprocess
 import sys
 
-# Dossiers à créer
-folders = [
-    "app",
-    "app/core",
-    "app/routes",
-    "app/schemas",
-    "app/sqlmodels",
-    "app/services",
-    "app/utils",
-    "app/utils/dataset",
-    "app/middleware",
+from utils import get_entities
+
+# --- Constantes ---
+FOLDERS = [
+    "app", "app/core", "app/routes", "app/schemas", "app/sqlmodels",
+    "app/services", "app/utils", "app/utils/seeds", "app/middleware"
 ]
 
-# Fichiers à créer
-files = [
-    "app/main.py",
-    "app/core/__init__.py",
-    "app/core/config.py",
-    "app/core/database.py",
-    "app/routes/__init__.py",
-    "app/routes/auth.py",
-    "app/schemas/__init__.py",
-    "app/schemas/user.py",
-    "app/schemas/token.py",
-    "app/sqlmodels/__init__.py",
-    "app/sqlmodels/user.py",
-    "app/services/__init__.py",
-    "app/services/auth.py",
-    "app/services/roles.py",
-    "app/utils/__init__.py",
-    "app/utils/dataset/__init__.py",
-    "app/utils/dataset/users.py",
-    "app/middleware/__init__.py",
-    ".env",
-    "requirements.txt",
-    "README.md",
+FILES = [
+    "app/main.py", "app/core/__init__.py", "app/core/config.py", "app/core/database.py",
+    "app/routes/__init__.py", "app/routes/auth.py", "app/schemas/__init__.py",
+    "app/schemas/user.py", "app/schemas/token.py", "app/sqlmodels/__init__.py",
+    "app/sqlmodels/user.py", "app/services/__init__.py", "app/services/auth.py",
+    "app/services/roles.py", "app/utils/__init__.py", "app/utils/seeds/__init__.py",
+    "app/utils/seeds/seed_users.py", "app/middleware/__init__.py", ".env", "requirements.txt", "README.md"
 ]
 
-# Contenu des requirements avec Argon2
-requirements = [
-    "fastapi",
-    "uvicorn[standard]",
-    "sqlalchemy",
-    "pydantic",
-    "alembic",
-    "python-dotenv",
-    "httpx",
-    "pytest",
-    "python-jose[cryptography]",
-    "passlib[argon2]",
-    "python-multipart",
+REQUIREMENTS = [
+    "fastapi", "uvicorn[standard]", "sqlalchemy", "pydantic", "alembic", "python-dotenv",
+    "httpx", "pytest", "python-jose[cryptography]", "passlib[argon2]", "python-multipart", "psycopg2",
 ]
 
-def create_structure(base_path="."):
-    print("🔧 Initialisation du projet FastAPI avec rôles…")
-
-    # Créer les dossiers
-    for folder in folders:
-        path = os.path.join(base_path, folder)
-        os.makedirs(path, exist_ok=True)
-        print(f"📁 Dossier créé : {path}")
-
-    # Créer les fichiers
-    for file in files:
-        file_path = os.path.join(base_path, file)
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
-        # Génération de chaque fichier
-        if file == "app/main.py":
-            content = '''from fastapi import FastAPI
+def get_file_content(file, secret_key=None):
+    if file == "app/main.py":
+        return '''from fastapi import FastAPI
 from app.core.config import settings
 from app.routes.auth import router as auth_router
+from app.sqlmodels import Base
+from app.core.database import engine
+from app.utils.seeds.seed_users import seed_users
+
+# TODO: Modifier ce système et passer sur Alembic
+Base.metadata.drop_all(bind=engine)   # <-- supprime toutes les tables
+Base.metadata.create_all(bind=engine) # <-- recrée toutes les tables
+
+seed_users()
 
 app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
 app.include_router(auth_router, prefix="/auth")
@@ -83,16 +47,26 @@ app.include_router(auth_router, prefix="/auth")
 def read_root():
     return {"message": f"Welcome to {settings.PROJECT_NAME}!"}
 '''
-        elif file == "app/sqlmodels/__init__.py":
-            content = '''from sqlalchemy.orm import declarative_base
+    elif file == "app/sqlmodels/__init__.py":
+        return '''from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
+
+# Importe automatiquement tous les modules du dossier (magique)
+import pkgutil
+import importlib
+import pathlib
+
+for module in pkgutil.iter_modules([str(pathlib.Path(__file__).parent)]):
+    if module.name != "__init__":
+        importlib.import_module(f"{__package__}.{module.name}")
 '''
 
-        
-        elif file == "app/core/config.py":
+    elif file == "app/core/config.py":
+        if secret_key is None:
+            import random
             secret_key = random.SystemRandom().getrandbits(256)
-            content = f'''from pydantic_settings import BaseSettings
+        return f'''from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "FastAPI Project"
@@ -105,15 +79,15 @@ class Settings(BaseSettings):
 
     DB_USERNAME: str = "postgres"
     DB_PASSWORD: str = "postgres"
-    DB_DATABASE: str = "postgres"
+    DB_DATABASE: str = "db_fastapi_project"
 
     class Config:
         env_file = ".env"
 
 settings = Settings()
 '''
-        elif file == "app/core/database.py":
-            content = '''from sqlalchemy import create_engine
+    elif file == "app/core/database.py":
+        return '''from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 
@@ -132,8 +106,8 @@ def get_db():
     finally:
         db.close()
 '''
-        elif file == "app/routes/auth.py":
-            content = '''from datetime import timedelta
+    elif file == "app/routes/auth.py":
+        return '''from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError
@@ -142,21 +116,21 @@ from app.core.config import settings
 from app.schemas.user import User
 from app.schemas.token import Token
 from app.sqlmodels.user import UserInDB
-from app.utils.dataset.users import get_users
+
+from app.core.database import SessionLocal
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
-fake_users_db = get_users()
-
-def get_user(email: str):
-    return fake_users_db.get(email)
-
 def authenticate_user(email: str, password: str):
-    user = get_user(email)
-    if not user or not verify_password(password, user.hashed_password):
-        return False
-    return user
+    db = SessionLocal()
+    try:
+        user = db.query(UserInDB).filter(UserInDB.email == email).first()
+        if not user or not verify_password(password, user.hashed_password):
+            return None
+        return user
+    finally:
+        db.close()
 
 @router.post("/token", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
@@ -180,20 +154,29 @@ async def read_users_me(token: str = Depends(oauth2_scheme)):
         token_data = decode_access_token(token)
     except JWTError:
         raise credentials_exception
-    user = get_user(token_data.email)
-    if user is None:
-        raise credentials_exception
-    return User(email=user.email, role=user.role)
+
+    db = SessionLocal()
+    try:
+        user = db.query(UserInDB).filter(UserInDB.email == token_data.email).first()
+        if user is None:
+            raise credentials_exception
+        return user
+    finally:
+        db.close()
 '''
-        elif file == "app/schemas/user.py":
-            content = '''from pydantic import BaseModel
+    elif file == "app/schemas/user.py":
+        return '''from pydantic import BaseModel
 
 class User(BaseModel):
+    id: int
     email: str
     role: str
+
+    class Config:
+        from_attributes = True
 '''
-        elif file == "app/schemas/token.py":
-            content = '''from typing import Optional
+    elif file == "app/schemas/token.py":
+        return '''from typing import Optional
 from pydantic import BaseModel
 
 class Token(BaseModel):
@@ -204,19 +187,19 @@ class TokenData(BaseModel):
     email: Optional[str] = None
     role: Optional[str] = "user"
 '''
-        elif file == "app/sqlmodels/user.py":
-            content = '''from sqlalchemy import Column, Integer, String
+    elif file == "app/sqlmodels/user.py":
+        return '''from sqlalchemy import Column, Integer, String
 from app.sqlmodels import Base
 
 class UserInDB(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True)
-    hashed_password = Column(String)
-    role = Column(String, default="user")
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    role = Column(String, default="user", nullable=False)
 '''
-        elif file == "app/services/auth.py":
-            content = '''from datetime import datetime, timedelta
+    elif file == "app/services/auth.py":
+        return '''from datetime import datetime, timedelta
 from typing import Optional
 from jose import jwt, JWTError
 from passlib.context import CryptContext
@@ -245,8 +228,8 @@ def decode_access_token(token: str) -> TokenData:
         raise JWTError("Missing subject")
     return TokenData(email=email, role=role)
 '''
-        elif file == "app/services/roles.py":
-            content = '''from fastapi import Depends, HTTPException, status
+    elif file == "app/services/roles.py":
+        return '''from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from app.services.auth import decode_access_token
@@ -273,43 +256,57 @@ def require_role(required_role: str):
         return user
     return role_checker
 '''
-        elif file == "app/utils/dataset/users.py":
-            content = '''from app.services.auth import get_password_hash
-from app.sqlmodels.user import UserInDB
+    elif file == "app/utils/seeds/seed_users.py":
+        return '''from app.sqlmodels.user import UserInDB
+from app.core.database import SessionLocal
+from app.services.auth import get_password_hash
 
-"""Dataset de test contenant un compte admin par défaut."""
-
-def get_users():
-    return {
-        "admin@admin.com": UserInDB(
-            email="admin@admin.com",
-            hashed_password=get_password_hash("admin"),
-            role="admin",
-        ),
-        "user@example.com": UserInDB(
-            email="user@example.com",
-            hashed_password=get_password_hash("secret"),
-            role="user",
-        ),
-    }
+def seed_users():
+    db = SessionLocal()
+    try:
+        email = "admin@admin.com"
+        existing = db.query(UserInDB).filter_by(email=email).first()
+        if not existing:
+            db_user = UserInDB(
+                email=email,
+                hashed_password=get_password_hash("admin"),
+                role="admin",
+            )
+            db.add(db_user)
+            print(f"Utilisateur ajouté : {email}")
+        else:
+            print(f"Utilisateur déjà existant : {email}")
+        db.commit()
+    finally:
+        db.close()
 '''
-        elif file == "README.md":
-            content = """# FastAPI Project
+    elif file == "README.md":
+        return """# FastAPI Project
 
 Projet généré automatiquement avec gestion des rôles et authentification JWT (Argon2)."""
-        elif file == "requirements.txt":
-            content = "\n".join(requirements + ["pydantic-settings"])
-        elif file == ".env":
-            content = "# Variables d'environnement - remplir selon besoin"
-        else:
-            content = ""
+    elif file == "requirements.txt":
+        return "\n".join(REQUIREMENTS + ["pydantic-settings"])
+    elif file == ".env":
+        return "# Variables d'environnement - remplir selon besoin"
+    else:
+        return ""
 
-        # Écrire le contenu
+def create_folders(base_path=".", folders=None):
+    for folder in (folders or FOLDERS):
+        path = os.path.join(base_path, folder)
+        os.makedirs(path, exist_ok=True)
+        print(f"📁 Dossier créé : {path}")
+
+def create_files(base_path=".", files=None, secret_key=None):
+    for file in (files or FILES):
+        file_path = os.path.join(base_path, file)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        content = get_file_content(file, secret_key=secret_key)
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
         print(f"📄 Fichier créé : {file_path}")
 
-    # .gitignore
+def create_gitignore(base_path="."):
     gitignore_path = os.path.join(base_path, ".gitignore")
     with open(gitignore_path, "w", encoding="utf-8") as f:
         f.write("""__pycache__/
@@ -323,12 +320,13 @@ venv/
 """)
     print(f"📄 .gitignore créé")
 
-    # Virtualenv
+def create_virtualenv(base_path="."):
     venv_path = os.path.join(base_path, "venv")
     subprocess.run([sys.executable, "-m", "venv", venv_path])
     print(f"🧪 Environnement virtuel créé : {venv_path}")
+    return venv_path
 
-    # Scripts de lancement
+def create_launch_scripts(base_path="."):
     python_exec = os.path.join("venv", "Scripts" if os.name == "nt" else "bin", "python")
     with open(os.path.join(base_path, "run.bat"), "w") as f:
         f.write(f'@echo off\n"{python_exec}" -m uvicorn app.main:app --reload')
@@ -336,7 +334,7 @@ venv/
         f.write(f'#!/bin/bash\n"{python_exec}" -m uvicorn app.main:app --reload')
     print("🚀 Fichiers de lancement créés")
 
-    # setup.bat
+def create_setup_script(base_path="."):
     setup_path = os.path.join(base_path, "setup.bat")
     with open(setup_path, "w", encoding="utf-8") as f:
         f.write("""@echo off
@@ -346,7 +344,108 @@ echo Environnement virtuel activé et dépendances installées.
 """)
     print("📄 setup.bat créé")
 
-    print("✅ Projet FastAPI initialisé avec Argon2 et rôles !")
+def create_custom_entities(base_path="."):
+    entities = get_entities()
+    for entity in entities:
+        filename = entity.lower() + ".py"
+        sqlmodels_path = os.path.join(base_path, "app", "sqlmodels", filename)
+        schemas_path = os.path.join(base_path, "app", "schemas", filename)
+        with open(sqlmodels_path, "w", encoding="utf-8") as f:
+            f.write(generate_sql_schema(entity, entities[entity]))
+            print(f"📄 Fichier généré : {sqlmodels_path}")
+        with open(schemas_path, "w", encoding="utf-8") as f:
+            f.write(generate_schema(entity, entities[entity]))
+            print(f"📄 Fichier généré : {schemas_path}")
+
+def generate_schema(entity_name:str, attributes:list):
+    schema_content = f"""from pydantic import BaseModel
+
+class {entity_name}(BaseModel):
+"""
+    for attr in attributes:
+        var_name = attr.split()[0] 
+        var_type = attr.split()[1] if len(attr.split()) > 1 else "str"
+        schema_content += f"    {var_name}: {var_type}\n"
+
+    schema_content += "\n    class Config:\n        from_attributes = True\n"
+    return schema_content
+
+def parse_py_types_to_sql_type(py_type: str) -> str:
+    if py_type == "int":
+        return "Integer"
+    elif py_type == "str":
+        return "String"
+    elif py_type == "float":
+        return "Float"
+    elif py_type == "date":
+        return "Date"
+    else:
+        print()
+        print("❓❓❓ Type non reconnu pour l'enregistrement dans la BDD : ")
+        print("❓❓❓ " + py_type + "\n")
+        return py_type
+
+def generate_sql_schema(entity_name:str, attributes:list):
+    sql_content = f"""from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey
+from app.sqlmodels import Base
+
+class {entity_name}(Base):
+    __tablename__ = "{entity_name.lower()}"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+"""
+    for attr in attributes:
+        var_name = attr.split()[0]
+        var_type = attr.split()[1] if len(attr.split()) > 1 else "str"
+        
+        not_null = ".nn" in attr
+        unique = ".unique" in attr
+        fk = ".fk" in attr
+        max = None
+        var_type = parse_py_types_to_sql_type(var_type)
+        
+        if ".max" in attr:
+            max = attr.split(".max")[1].split()[0].strip()
+
+
+        if max is not None and var_type == "String":
+            var_type = f"String({max})"
+
+        if ".fk" in attr:
+            fk_table = var_type.lower()
+            sql_content += f"    {var_name} = Column(Integer, ForeignKey('{fk_table.lower()}.id'), nullable={str(not_null)}, unique={str(unique)})\n"
+            continue
+
+        sql_content += f"    {var_name} = Column({var_type}, nullable={str(not_null)}, unique={str(unique)})\n"
+
+    sql_content += "\n"
+    return sql_content
+
+def generate_getters(entity_name: str, attributes: list) -> str:
+    getters_content = f"""def get_{entity_name.lower()}(db, id: int):
+    return db.query({entity_name}).filter({entity_name}.id == id).first()
+"""
+    for attr in attributes:
+        var_name = attr.split()[0]
+        getters_content += f"""def get_{entity_name.lower()}_{var_name}(db, id: int):
+    return db.query({entity_name}).filter({entity_name}.{var_name} == id).first()
+"""
+    return getters_content
+
+def init_fastapi_project(base_path="."):
+    print("🔧 Initialisation du projet FastAPI avec rôles…")
+    secret_key = random.SystemRandom().getrandbits(256)
+    create_folders(base_path)
+    create_files(base_path, secret_key=secret_key)
+    create_gitignore(base_path)
+    create_virtualenv(base_path)
+    create_launch_scripts(base_path)
+    create_setup_script(base_path)
+    create_custom_entities(base_path)
+    print("✅ Projet FastAPI initialisé avec succès !")
+
+def main():
+    base_path = "C:\\Users\\thoma\\Desktop\\NyxImperiumBackend"
+    init_fastapi_project(base_path)
 
 if __name__ == "__main__":
-    create_structure("C:\\Users\\thoma\\Desktop\\NyxImperiumBackend")
+    main()

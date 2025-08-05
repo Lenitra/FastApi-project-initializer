@@ -1,17 +1,22 @@
+
 # FastAPI Project Initializer
 
-Un script Python pour générer automatiquement la structure complète d’un projet FastAPI, avec tous les dossiers, fichiers essentiels, un système d'authentification JWT basique, environnement virtuel et dépendances de base.
+A Python script to automatically generate the complete structure of a FastAPI project, with all folders, essential files, a basic JWT authentication system, virtual environment, and basic dependencies.
 
-## 🚀 À quoi sert ce script ?
+## 🚀 What is this script for?
 
-Ce script automatise :
-- La création de la structure de dossiers recommandée pour FastAPI
-- La génération des fichiers principaux (`main.py`, `config.py`, etc.)
-- L’ajout d’un environnement virtuel Python
-- L’installation des dépendances nécessaires (FastAPI, Uvicorn, SQLAlchemy, etc.)
-- La mise en place d'une authentification JWT basique (email et mot de passe)
+### This script automates:
+- The creation of the recommended folder structure for FastAPI
+- The generation of main files (`main.py`, `config.py`, etc.)
+- The addition of a Python virtual environment
+- The installation of required dependencies (FastAPI, Uvicorn, SQLAlchemy, etc.)
+- The setup of a basic JWT authentication system (email and password)
+### Upcoming features:
+- Role system (admin, user)
+- Creation of SQLAlchemy models based on an entities file
+- Automatic generation of Pydantic schemas for data validation
 
-## 📁 Structure générée
+## 📁 Generated structure
 
 ```
 app/
@@ -44,16 +49,16 @@ requirements.txt
 README.md
 ```
 
-## 🛠️ Utilisation
+## 🛠️ Usage
 
-1. Exécutez le script :
+1. Run the script:
    ```bash
    python InitFastAPIProject.py
    ```
-2. Indiquez le chemin du projet (ou laissez vide pour le dossier courant)
-3. Le script crée la structure, installe les dépendances et prépare le projet
+2. Enter the project path (or leave empty for the current folder)
+3. The script creates the structure, installs dependencies, and prepares the project
 
-## 📦 Dépendances installées
+## 📦 Installed dependencies
 - fastapi
 - uvicorn[standard]
 - sqlalchemy
@@ -63,23 +68,25 @@ README.md
 - httpx
 - pytest
 - python-jose[cryptography]
-- passlib[bcrypt]
+- passlib[argon2]
+- python-multipart
+- pydantic-settings
 
-## ⚡ Démarrage rapide
-Après l’initialisation :
+## ⚡ Quick start
+After initialization:
 
 ```bash
-# Activez l’environnement virtuel
+# Activate the virtual environment
 venv\Scripts\activate  # Windows
-# ou
+# or
 source venv/bin/activate  # Linux/Mac
 
-# Lancez le serveur
+# Start the server
 uvicorn app.main:app --reload
 ```
 
-Votre API sera accessible sur http://localhost:8000
+Your API will be available at http://localhost:8000
 
 ---
 
-*Ce script vous fait gagner du temps et vous permet de démarrer rapidement un projet FastAPI professionnel !*
+*This script saves you time and lets you quickly start a professional FastAPI project!*

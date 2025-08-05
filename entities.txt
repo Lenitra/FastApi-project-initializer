@@ -1,13 +1,11 @@
 Player
-- id string -0 +100
-- money int -0
+- money int .min0
 - last_activity date .past .nn
 
 Tile
-- id int *
 - x int * .nn
-- y int * .nn 
-- owner Player
-- lvl int -0
-- bat string
-- units int -0
+- y int * .nn .unique
+- owner Player .fk
+- lvl int .min0 .max5
+- bat str .max10
+- units int .min0
