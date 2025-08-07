@@ -17,7 +17,8 @@ FILES = [
     "app/schemas/user.py", "app/schemas/token.py", "app/sqlmodels/__init__.py",
     "app/sqlmodels/user.py", "app/services/__init__.py", "app/services/auth.py",
     "app/services/roles.py", "app/utils/__init__.py", "app/utils/seeds/__init__.py",
-    "app/utils/seeds/seed_users.py", "app/middleware/__init__.py", ".env", "requirements.txt", "README.md"
+    "app/utils/seeds/seed_users.py", "app/middleware/__init__.py", ".env", "requirements.txt", "README.md",
+    "app/middleware/auth_checker.py"
 ]
 
 REQUIREMENTS = [
@@ -32,17 +33,18 @@ from app.core.config import settings
 from app.core.database import engine
 from app.sqlmodels import Base
 from app.utils.seeds.seed_users import seed_users
+from app.middleware.auth_checker import AuthMiddleware
 
 import pkgutil
 import importlib
 import pathlib
 
-# TODO: passer sur Alembic plutôt que drop/create à chaud
-Base.metadata.drop_all(bind=engine)    # supprime toutes les tables
+# Création de la base de données
 Base.metadata.create_all(bind=engine)  # recrée toutes les tables
 seed_users()
 
 app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
+app.add_middleware(AuthMiddleware)
 
 # inclusion manuelle du router d'auth
 from app.routes.auth import router as auth_router
@@ -60,10 +62,40 @@ for module_info in pkgutil.iter_modules([str(routes_dir)]):
         prefix = f"/{name}s"
         app.include_router(router, prefix=prefix, tags=[name])
 
-@app.get("/")
-def read_root():
-    return {"message": f"Welcome to {settings.PROJECT_NAME}!"}
+
 '''
+    elif file == "app/middleware/auth_checker.py":
+        return """# app/middleware/auth_checker.py
+
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from jose import JWTError
+from app.services.auth import decode_access_token
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path.startswith("/auth"):  # Ne pas vérifier les routes d'auth
+            return await call_next(request)
+
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return JSONResponse(
+                status_code=401, content={"detail": "Missing or invalid Authorization header"}
+            )
+
+        token = auth_header[7:]  # Supprime "Bearer "
+        try:
+            user = decode_access_token(token)
+            request.state.user = user
+        except JWTError:
+            return JSONResponse(
+                status_code=401, content={"detail": "Invalid token"}
+            )
+
+        response = await call_next(request)
+        return response
+"""
 
     elif file == "app/sqlmodels/__init__.py":
         return '''from sqlalchemy.orm import declarative_base
@@ -388,7 +420,7 @@ def generate_schema(entity_name:str, attributes:list):
     for attr in attributes:
         if is_custom_type(attr.split()[1]):
             schema_content += f"\nfrom app.schemas.{attr.split()[1].lower()} import {attr.split()[1]}\n"
-    schema_content+=f"""from datetime import date
+    schema_content+=f"""from datetime import datetime, date, time
 
 class {entity_name}(BaseModel):
 """

@@ -27,7 +27,7 @@ def get_entities():
 
     for line in lines:
         if not line.startswith(" ") and not line.startswith("- "):
-            entity_name = line.split()[0].strip()
+            entity_name = line.split(" ")[0].strip()
             if entity_name != "":
                 entities[entity_name] = []
 
