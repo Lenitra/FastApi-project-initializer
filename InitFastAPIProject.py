@@ -491,7 +491,7 @@ def init_fastapi_project(base_path="."):
     print("✅ Projet FastAPI initialisé avec succès !")
 
 def main():
-    base_path = "C:\\Users\\thoma\\Desktop\\NyxImperiumBackend"
+    base_path = "C:\\Users\\thoma\\Desktop\\Boulot\\formation-lemartinel\\jalon2"
     init_fastapi_project(base_path)
 
 if __name__ == "__main__":

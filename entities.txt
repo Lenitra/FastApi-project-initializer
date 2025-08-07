@@ -1,23 +1,50 @@
-Satellite
-- name str .max30 .unique
-- launch_date date .past .nn
-- status str .max15 .nn      # ex: OPERATIONAL, OFFLINE, MAINTENANCE, LOST
-- orbit_type str .max15      # ex: LEO, GEO, MEO, HEO
-- lat float .nn              # latitude actuelle
-- lon float .nn              # longitude actuelle
-- operator Operator .fk
-- mission_type str .max20    # ex: Surveillance, Communication, Reconnaissance
-- payloads int .min1         # nombre de charges utiles
+Satellite                       # Informations générales sur un satellite
+- name str .max50 .unique .nn                  # Nom du satellite (ex: ISS)
+- object_id str .max20 .unique .nn             # ID standard international (ex: 1998-067A)
+- norad_cat_id int .unique .nn                 # Identifiant NORAD (ex: 25544)
+- object_type str .max20                       # Type d’objet (ex: PAYLOAD, DEBRIS)
+- classification str .max5                     # Niveau de classification (U = Unclassified)
+- rcs_size str .max15                          # Taille estimée de la surface radar (ex: LARGE)
+- country str .max10                           # Code pays ou entité opératrice (ex: USA, RUS)
+- launch_date date .past .nn                   # Date de lancement (dans le passé)
+- launch_site str .max20                       # Lieu de lancement (ex: TTMTR)
+- decay_date date .past                        # Date de rentrée ou désorbitation (nullable)
 
-Operator
-- name str .max25 .nn
-- rank str .max20 .nn
-- assigned_satellites int .min0
-- last_check date .past
+GPSet                            # Jeu d’éléments orbitaux à une époque donnée
+- satellite Satellite .fk                      # Référence au satellite concerné
+- epoch datetime .nn                           # Époque de validité des éléments orbitaux
+- creation_date datetime .nn                   # Date de génération du jeu GP
+- gp_id int .unique .nn                        # Identifiant unique Space-Track
+- file_id int                                  # ID du fichier source (Space-Track)
+- source str .max50                            # Source des données (ex: Space-Track)
 
-Alert
-- satellite Satellite .fk
-- detected_at date .nn
-- alert_type str .max25      # ex: DEVIATION, POWER LOSS, INTRUSION, COLLISION RISK
-- severity int .min1 .max5
-- resolved bool .nn
+GPOrbitalElement                # Éléments keplériens de base (données physiques d’orbite)
+- gpset GPSet .fk                              # Référence au jeu GP concerné
+- mean_motion float .nn                        # Révolutions par jour
+- eccentricity float .nn                       # Excentricité de l’orbite (0 ≈ circulaire)
+- inclination float .nn                        # Inclinaison en degrés (0 à 180)
+- ra_of_asc_node float .nn                     # Ascension droite du nœud ascendant (RAAN), en degrés
+- arg_of_pericenter float .nn                  # Argument du périgée, en degrés
+- mean_anomaly float .nn                       # Anomalie moyenne, en degrés
+- ephemeris_type int                           # Type d’éphéméride (ex: 0 = SGP4)
+- mean_motion_dot float                        # Variation première du mouvement moyen
+- mean_motion_ddot float                       # Variation seconde du mouvement moyen
+- bstar float                                  # Coefficient de freinage atmosphérique
+- rev_at_epoch int                             # Révolution à l’époque (compteur d’orbite)
+- mean_element_theory str .max10               # Théorie utilisée (ex: SGP4)
+
+GPDynamics                      # Paramètres calculés à partir des éléments orbitaux
+- gpset GPSet .fk                              # Référence au jeu GP concerné
+- semimajor_axis float .nn                     # Demi-grand axe en km
+- period float .nn                             # Période orbitale en minutes
+- apoapsis float .nn                           # Apogée en km (point le plus éloigné)
+- periapsis float .nn                          # Périgée en km (point le plus proche)
+
+GPMeta                          # Métadonnées de contexte et représentation TLE
+- gpset GPSet .fk                              # Référence au jeu GP concerné
+- tle_line0 str .max100                        # Ligne 0 du TLE (nom)
+- tle_line1 str .max100                        # Ligne 1 du TLE (identifiants + BSTAR)
+- tle_line2 str .max100                        # Ligne 2 du TLE (éléments orbitaux)
+- ref_frame str .max10                         # Cadre de référence (ex: TEME)
+- center_name str .max10                       # Centre de gravité (ex: EARTH)
+- time_system str .max10                       # Système temporel (ex: UTC)
