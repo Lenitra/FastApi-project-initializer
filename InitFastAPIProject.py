@@ -192,27 +192,6 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     return {"access_token": access_token, "token_type": "bearer"}
-
-@router.get("/users/me", response_model=User)
-async def read_users_me(token: str = Depends(oauth2_scheme)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        token_data = decode_access_token(token)
-    except JWTError:
-        raise credentials_exception
-
-    db = SessionLocal()
-    try:
-        user = db.query(UserInDB).filter(UserInDB.email == token_data.email).first()
-        if user is None:
-            raise credentials_exception
-        return user
-    finally:
-        db.close()
 '''
     elif file == "app/schemas/user.py":
         return '''from pydantic import BaseModel
