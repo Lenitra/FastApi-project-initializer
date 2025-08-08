@@ -72,16 +72,22 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from jose import JWTError
 from app.services.auth import decode_access_token
+from dotenv import load_dotenv
+import os
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        load_dotenv()
+        if os.getenv("DEBUG", "False").lower() == "true":
+            if request.url.path.startswith("/docs") or request.url.path.startswith("/redoc") or request.url.path.startswith("/openapi.json"):
+                return await call_next(request)
         if request.url.path.startswith("/auth"):  # Ne pas vérifier les routes d'auth
             return await call_next(request)
 
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
             return JSONResponse(
-                status_code=401, content={"detail": "Missing or invalid Authorization header"}
+            status_code=401, content={"detail": "Missing or invalid Authorization header"}
             )
 
         token = auth_header[7:]  # Supprime "Bearer "
@@ -90,12 +96,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
             request.state.user = user
         except JWTError:
             return JSONResponse(
-                status_code=401, content={"detail": "Invalid token"}
+            status_code=401, content={"detail": "Invalid token"}
             )
 
         response = await call_next(request)
         return response
-"""
+    """
 
     elif file == "app/sqlmodels/__init__.py":
         return '''from sqlalchemy.orm import declarative_base
@@ -111,25 +117,26 @@ for module in pkgutil.iter_modules([str(pathlib.Path(__file__).parent)]):
     if module.name != "__init__":
         importlib.import_module(f"{__package__}.{module.name}")
 '''
-
     elif file == "app/core/config.py":
-        if secret_key is None:
-            import random
-            secret_key = random.SystemRandom().getrandbits(256)
-        return f'''from pydantic_settings import BaseSettings
+        return '''from pydantic_settings import BaseSettings
+from typing import Optional
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "FastAPI Project"
     VERSION: str = "0.1.0"
     DEBUG: bool = True
-    DATABASE_URL: str = "localhost:5432"
-    SECRET_KEY: str = "{secret_key}"
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-
-    DB_USERNAME: str = "postgres"
-    DB_PASSWORD: str = "postgres"
-    DB_DATABASE: str = "db_fastapi_project"
+    
+    # Configuration de base de données
+    DB_HOST: str
+    DB_PORT: int
+    DB_USERNAME: str
+    DB_PASSWORD: str
+    DB_DATABASE: str
+    
+    # Configuration de sécurité
+    SECRET_KEY: str
+    ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
 
     class Config:
         env_file = ".env"
@@ -141,10 +148,8 @@ settings = Settings()
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 
-DATABASE_URL = settings.DATABASE_URL
-if hasattr(settings, "DB_USERNAME"):
-    if "postgresql" not in DATABASE_URL:
-        DATABASE_URL = f"postgresql://{settings.DB_USERNAME}:{settings.DB_PASSWORD}@{settings.DATABASE_URL}/{settings.DB_DATABASE}"
+# Construction de l'URL de connexion à partir des variables d'environnement
+DATABASE_URL = f"postgresql://{settings.DB_USERNAME}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_DATABASE}"
 
 engine = create_engine(DATABASE_URL, echo=settings.DEBUG)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -316,7 +321,24 @@ Projet généré automatiquement avec gestion des rôles et authentification JWT
     elif file == "requirements.txt":
         return "\n".join(REQUIREMENTS + ["pydantic-settings"])
     elif file == ".env":
-        return "# Variables d'environnement - remplir selon besoin"
+        if secret_key is None:
+            import random
+            secret_key = random.SystemRandom().getrandbits(256)
+        return """# Variables d'environnement - remplir selon besoin
+DEBUG=True
+
+# Informations de connexion à la base de données
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+DB_DATABASE=db_fastapi_project
+
+# Configuration de sécurité
+SECRET_KEY={}
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+""".format(secret_key)
     else:
         return ""
 
