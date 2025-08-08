@@ -498,11 +498,11 @@ from app.schemas.{entity_name.lower()} import {entity_name} as {entity_name}Sche
 
 router = APIRouter()
 
-@router.get("/{entity_name.lower()}s", response_model=list[{entity_name}Schema])
+@router.get("/", response_model=list[{entity_name}Schema])
 def get_all_{entity_name.lower()}s(db: Session = Depends(get_db)):
     return db.query({entity_name}).all()
 
-@router.get("/{entity_name.lower()}s/{{id}}", response_model={entity_name}Schema)
+@router.get("/{{id}}", response_model={entity_name}Schema)
 def get_{entity_name.lower()}_by_id(id: int, db: Session = Depends(get_db)):
     obj = db.query({entity_name}).filter({entity_name}.id == id).first()
     if not obj:
