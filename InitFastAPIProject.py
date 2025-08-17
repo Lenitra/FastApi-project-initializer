@@ -79,7 +79,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         load_dotenv()
         if os.getenv("DEBUG", "False").lower() == "true":
-            if request.url.path.startswith("/docs") or request.url.path.startswith("/redoc") or request.url.path.startswith("/openapi.json"):
+            authorized_routes = ["/docs", "/redoc", "/openapi.json"]
+            if request.url.path in authorized_routes:
                 return await call_next(request)
         if request.url.path.startswith("/auth"):  # Ne pas vérifier les routes d'auth
             return await call_next(request)
@@ -360,14 +361,32 @@ def create_files(base_path=".", files=None, secret_key=None):
 def create_gitignore(base_path="."):
     gitignore_path = os.path.join(base_path, ".gitignore")
     with open(gitignore_path, "w", encoding="utf-8") as f:
-        f.write("""__pycache__/
+        f.write("""# Python
+__pycache__/
 *.py[cod]
+*.pyo
+*.pyd
 venv/
 .env
+.env.*
+*.sqlite3
 *.db
 *.log
+*.pot
+*.pyc
+*.mypy_cache/
+.pytest_cache/
 .vscode/
+dist/
+build/
+*.egg-info/
+*.egg
+.DS_Store
+node_modules/
+coverage/
+htmlcov/
 .idea/
+/.history/
 """)
     print(f"📄 .gitignore créé")
 
@@ -524,7 +543,7 @@ def init_fastapi_project(base_path="."):
     print("✅ Projet FastAPI initialisé avec succès !")
 
 def main():
-    base_path = "C:\\Users\\thoma\\Desktop\\Boulot\\formation-lemartinel\\jalon2"
+    base_path = "C:\\Users\\thoma\\Desktop\\NyxImperiumBackend"
     init_fastapi_project(base_path)
 
 if __name__ == "__main__":
