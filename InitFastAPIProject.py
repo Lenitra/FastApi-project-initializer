@@ -18,7 +18,7 @@ FILES = [
     "app/sqlmodels/user.py", "app/services/__init__.py", "app/services/auth.py",
     "app/services/roles.py", "app/utils/__init__.py", "app/utils/seeds/__init__.py",
     "app/utils/seeds/seed_users.py", "app/middleware/__init__.py", ".env", "requirements.txt", "README.md",
-    "app/middleware/auth_checker.py"
+    "app/middleware/auth_checker.py", ".env.example"
 ]
 
 REQUIREMENTS = [
@@ -321,7 +321,7 @@ def seed_users():
 Projet généré automatiquement avec gestion des rôles et authentification JWT (Argon2)."""
     elif file == "requirements.txt":
         return "\n".join(REQUIREMENTS + ["pydantic-settings"])
-    elif file == ".env":
+    elif file == ".env" or file == ".env.example":
         if secret_key is None:
             import random
             secret_key = random.SystemRandom().getrandbits(256)
