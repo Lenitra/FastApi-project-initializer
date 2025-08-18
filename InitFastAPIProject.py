@@ -9,17 +9,17 @@ from utils import get_entities
 FOLDERS = [
     "app", "app/core", "app/routes", "app/schemas", "app/sqlmodels",
     "app/services", "app/utils", "app/utils/seeds", "app/middleware",
-    "app/repositories"
+    "app/repositories", "app/services/authentification"
 ]
 
 FILES = [
-    "app/main.py", "app/core/__init__.py", "app/core/config.py", "app/core/database.py",
-    "app/routes/__init__.py", "app/routes/auth.py", "app/schemas/__init__.py",
+    "app/main.py", "app/core/config.py", "app/core/database.py",
+    "app/routes/auth.py",
     "app/schemas/user.py", "app/schemas/token.py", "app/sqlmodels/__init__.py",
-    "app/sqlmodels/user.py", "app/services/__init__.py", "app/services/auth.py",
-    "app/services/roles.py", "app/utils/__init__.py", "app/utils/seeds/__init__.py",
-    "app/utils/seeds/seed_users.py", "app/middleware/__init__.py", ".env", "requirements.txt", "README.md",
-    "app/middleware/auth_checker.py", ".env.example", "app/repositories/__init__.py", 
+    "app/sqlmodels/user.py", "app/services/authentification/auth.py",
+    "app/services/authentification/roles.py",
+    "app/utils/seeds/seed_users.py", ".env", "requirements.txt", "README.md",
+    "app/middleware/auth_checker.py", ".env.example",
     "app/repositories/base_repository.py", ".gitignore", "entities.txt",
 ]
 
@@ -79,7 +79,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from jose import JWTError
-from app.services.auth import decode_access_token
+from app.services.authentification.auth import decode_access_token
 from dotenv import load_dotenv
 import os
 
@@ -190,7 +190,7 @@ def get_db():
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError
-from app.services.auth import verify_password, create_access_token, decode_access_token
+from app.services.authentification.auth import verify_password, create_access_token, decode_access_token
 from app.core.config import settings
 from app.schemas.user import User
 from app.schemas.token import Token
@@ -260,7 +260,7 @@ class UserInDB(Base):
     role = Column(String, default="user", nullable=False)
 '''
     
-    elif file == "app/services/auth.py":
+    elif file == "app/services/authentification/auth.py":
         return '''from datetime import datetime, timedelta
 from typing import Optional
 from jose import jwt, JWTError
@@ -291,11 +291,11 @@ def decode_access_token(token: str) -> TokenData:
     return TokenData(email=email, role=role)
 '''
     
-    elif file == "app/services/roles.py":
+    elif file == "app/services/authentification/roles.py":
         return '''from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
-from app.services.auth import decode_access_token
+from app.services.authentification.auth import decode_access_token
 from app.schemas.token import TokenData
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
@@ -323,7 +323,7 @@ def require_role(required_role: str):
     elif file == "app/utils/seeds/seed_users.py":
         return '''from app.sqlmodels.user import UserInDB
 from app.core.database import SessionLocal
-from app.services.auth import get_password_hash
+from app.services.authentification.auth import get_password_hash
 
 def seed_users():
     db = SessionLocal()
