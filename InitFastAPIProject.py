@@ -149,7 +149,7 @@ class Settings(BaseSettings):
     '''
 
         # ajouter les lignes de add_to_env.txt
-        add_to_env_path = os.path.join("add_to_env.txt")
+        add_to_env_path = os.path.join("config/add_to_env.txt")
         if os.path.exists(add_to_env_path):
             with open(add_to_env_path, "r", encoding="utf-8") as add_file:
                 for e in add_file.readlines():
