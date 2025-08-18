@@ -586,7 +586,6 @@ def get_{entity_name.lower()}_by_id(id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail=f"{entity_name} not found")
     return obj
 '''
-    return getters_content
 
 def init_fastapi_project(base_path="."):
     print("🔧 Initialisation du projet FastAPI avec rôles…")
@@ -601,7 +600,7 @@ def init_fastapi_project(base_path="."):
     print("✅ Projet FastAPI initialisé avec succès !")
 
 def main():
-    base_path = "C:\\Users\\thoma\\Desktop\\NyxImperiumBackend"
+    base_path = "C:\\Users\\thoma\\Desktop\\Boulot\\formation-lemartinel"
     init_fastapi_project(base_path)
 
 if __name__ == "__main__":
