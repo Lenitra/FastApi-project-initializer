@@ -571,6 +571,7 @@ endlocal
 """)
     print("📄 setup.bat créé")
 
+
 def create_custom_entities(base_path="."):
     entities = get_entities()
     for entity in entities:
@@ -734,7 +735,6 @@ class {entity_name}(Base):
     return sql_content
 
 
-
 def generate_getters_routes(entity_name: str, attributes: list) -> str:
     lname = entity_name.lower()
     plural = lname
@@ -763,7 +763,6 @@ def get_{lname}_by_id(id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail=f"{entity_name} not found")
     return obj
 '''
-
 
 
 def init_fastapi_project(base_path="."):
