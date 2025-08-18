@@ -63,7 +63,10 @@ for module_info in pkgutil.iter_modules([str(routes_dir)]):
     module = importlib.import_module(f"app.routes.{name}")
     router = getattr(module, "router", None)
     if router:
-        prefix = f"/{name}s"
+        prefix = f"/{name}"
+        if not name.endswith("s"):
+            prefix += "s"
+
         app.include_router(router, prefix=prefix, tags=[name])
 
 
@@ -574,7 +577,7 @@ def create_custom_entities(base_path="."):
         filename = entity.lower() + ".py"
         sqlmodels_path = os.path.join(base_path, "app", "sqlmodels", filename)
         schemas_path = os.path.join(base_path, "app", "schemas", filename)
-        routes_path = os.path.join(base_path, "app", "routes", entity.lower() + "_routes.py")
+        routes_path = os.path.join(base_path, "app", "routes", filename)
         repositories_path = os.path.join(base_path, "app", "repositories", entity.lower() + "_repository.py")
         service_path = os.path.join(base_path, "app", "services", entity.lower() + "_service.py")
 
@@ -734,7 +737,11 @@ class {entity_name}(Base):
 
 def generate_getters_routes(entity_name: str, attributes: list) -> str:
     lname = entity_name.lower()
-    plural = lname + "s"
+    plural = lname
+    if lname.endswith("s"):
+        plural = lname
+    else:
+        plural = lname + "s"
 
     return f'''from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
