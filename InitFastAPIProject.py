@@ -8,7 +8,8 @@ from utils import get_entities
 # --- Constantes ---
 FOLDERS = [
     "app", "app/core", "app/routes", "app/schemas", "app/sqlmodels",
-    "app/services", "app/utils", "app/utils/seeds", "app/middleware"
+    "app/services", "app/utils", "app/utils/seeds", "app/middleware",
+    "app/repositories"
 ]
 
 FILES = [
@@ -18,13 +19,16 @@ FILES = [
     "app/sqlmodels/user.py", "app/services/__init__.py", "app/services/auth.py",
     "app/services/roles.py", "app/utils/__init__.py", "app/utils/seeds/__init__.py",
     "app/utils/seeds/seed_users.py", "app/middleware/__init__.py", ".env", "requirements.txt", "README.md",
-    "app/middleware/auth_checker.py", ".env.example"
+    "app/middleware/auth_checker.py", ".env.example", "app/repositories/__init__.py", 
+    "app/repositories/base_repository.py", ".gitignore"
 ]
 
 REQUIREMENTS = [
     "fastapi", "uvicorn[standard]", "sqlalchemy", "pydantic", "alembic", "python-dotenv",
     "httpx", "pytest", "python-jose[cryptography]", "passlib[argon2]", "python-multipart", "psycopg2",
+    "pydantic-settings"
 ]
+
 
 def get_file_content(file, secret_key=None):
     if file == "app/main.py":
@@ -64,6 +68,7 @@ for module_info in pkgutil.iter_modules([str(routes_dir)]):
 
 
 '''
+    
     elif file == "app/middleware/auth_checker.py":
         return """# app/middleware/auth_checker.py
 
@@ -118,8 +123,9 @@ for module in pkgutil.iter_modules([str(pathlib.Path(__file__).parent)]):
     if module.name != "__init__":
         importlib.import_module(f"{__package__}.{module.name}")
 '''
+    
     elif file == "app/core/config.py":
-        return '''from pydantic_settings import BaseSettings
+        config_file =  '''from pydantic_settings import BaseSettings
 from typing import Optional
 
 class Settings(BaseSettings):
@@ -138,12 +144,25 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
+    '''
+
+        # ajouter les lignes de add_to_env.txt
+        add_to_env_path = os.path.join("add_to_env.txt")
+        if os.path.exists(add_to_env_path):
+            with open(add_to_env_path, "r", encoding="utf-8") as add_file:
+                for e in add_file.readlines():
+                    if e.__contains__("="):
+                        config_file += "\n    " + e.split("=")[0] + ": str"
+
+        config_file += '''
 
     class Config:
         env_file = ".env"
 
 settings = Settings()
 '''
+        return config_file
+    
     elif file == "app/core/database.py":
         return '''from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -162,6 +181,7 @@ def get_db():
     finally:
         db.close()
 '''
+    
     elif file == "app/routes/auth.py":
         return '''from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -199,6 +219,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     )
     return {"access_token": access_token, "token_type": "bearer"}
 '''
+    
     elif file == "app/schemas/user.py":
         return '''from pydantic import BaseModel
 
@@ -210,6 +231,7 @@ class User(BaseModel):
     class Config:
         from_attributes = True
 '''
+    
     elif file == "app/schemas/token.py":
         return '''from typing import Optional
 from pydantic import BaseModel
@@ -222,6 +244,7 @@ class TokenData(BaseModel):
     email: Optional[str] = None
     role: Optional[str] = "user"
 '''
+    
     elif file == "app/sqlmodels/user.py":
         return '''from sqlalchemy import Column, Integer, String
 from app.sqlmodels import Base
@@ -233,6 +256,7 @@ class UserInDB(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(String, default="user", nullable=False)
 '''
+    
     elif file == "app/services/auth.py":
         return '''from datetime import datetime, timedelta
 from typing import Optional
@@ -263,6 +287,7 @@ def decode_access_token(token: str) -> TokenData:
         raise JWTError("Missing subject")
     return TokenData(email=email, role=role)
 '''
+    
     elif file == "app/services/roles.py":
         return '''from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -291,6 +316,7 @@ def require_role(required_role: str):
         return user
     return role_checker
 '''
+    
     elif file == "app/utils/seeds/seed_users.py":
         return '''from app.sqlmodels.user import UserInDB
 from app.core.database import SessionLocal
@@ -315,6 +341,7 @@ def seed_users():
     finally:
         db.close()
 '''
+    
     elif file == "README.md":
         # Utilise la clé secrète générée pour insérer une valeur d'exemple dans le README
         secret_display = format(secret_key, 'x') if secret_key is not None else "change_me"
@@ -377,13 +404,15 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 
 Remplacez `SECRET_KEY` par une valeur secrète et robuste en production.
 """
+    
     elif file == "requirements.txt":
-        return "\n".join(REQUIREMENTS + ["pydantic-settings"])
+        return "\n".join(REQUIREMENTS)
+    
     elif file == ".env" or file == ".env.example":
         if secret_key is None:
             import random
             secret_key = random.SystemRandom().getrandbits(256)
-        return """# Variables d'environnement - remplir selon besoin
+        envfile = """# Variables d'environnement - remplir selon besoin
 DEBUG=True
 
 # Informations de connexion à la base de données
@@ -398,35 +427,53 @@ SECRET_KEY={}
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 """.format(secret_key)
-    else:
-        return ""
+        # ajouter le contenu du fichier add_to_env.txt
+        add_to_env_path = os.path.join("add_to_env.txt")
+        if os.path.exists(add_to_env_path):
+            with open(add_to_env_path, "r", encoding="utf-8") as add_file:
+                envfile += "\n" + add_file.read()
+        return envfile
+    
+    elif file == "app/repositories/base_repository.py":
+        return """from sqlalchemy.orm import Session
+from typing import Generic, TypeVar, Type
 
-def create_folders(base_path=".", folders=None):
-    for folder in (folders or FOLDERS):
-        path = os.path.join(base_path, folder)
-        os.makedirs(path, exist_ok=True)
-        print(f"📁 Dossier créé : {path}")
+T = TypeVar("T")
 
-def create_files(base_path=".", files=None, secret_key=None):
-    for file in (files or FILES):
-        file_path = os.path.join(base_path, file)
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        content = get_file_content(file, secret_key=secret_key)
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(content)
-        print(f"📄 Fichier créé : {file_path}")
+class BaseRepository(Generic[T]):
+    def __init__(self, model: Type[T]):
+        self.model = model
 
-def create_gitignore(base_path="."):
-    gitignore_path = os.path.join(base_path, ".gitignore")
-    with open(gitignore_path, "w", encoding="utf-8") as f:
-        f.write("""# Python
+    def get(self, db: Session, id: int) -> T | None:
+        return db.get(self.model, id)
+
+    def list(self, db: Session, offset: int = 0, limit: int = 100):
+        return db.query(self.model).offset(offset).limit(limit).all()
+
+    def create(self, db: Session, obj_in: dict) -> T:
+        obj = self.model(**obj_in)
+        db.add(obj)
+        db.commit()
+        db.refresh(obj)
+        return obj
+
+    def delete(self, db: Session, id: int) -> bool:
+        obj = self.get(db, id)
+        if not obj:
+            return False
+        db.delete(obj)
+        db.commit()
+        return True
+"""
+    
+    elif file == ".gitignore":
+        return"""# Python
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 venv/
 .env
-.env.*
 *.sqlite3
 *.db
 *.log
@@ -445,14 +492,35 @@ coverage/
 htmlcov/
 .idea/
 /.history/
-""")
-    print(f"📄 .gitignore créé")
+"""
+
+    else:
+        return ""
+
+
+def create_folders(base_path=".", folders=None):
+    for folder in (folders or FOLDERS):
+        path = os.path.join(base_path, folder)
+        os.makedirs(path, exist_ok=True)
+        print(f"📁 Dossier créé : {path}")
+
+
+def create_files(base_path=".", files=None, secret_key=None):
+    for file in (files or FILES):
+        file_path = os.path.join(base_path, file)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        content = get_file_content(file, secret_key=secret_key)
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        print(f"📄 Fichier créé : {file_path}")
+
 
 def create_virtualenv(base_path="."):
     venv_path = os.path.join(base_path, "venv")
     subprocess.run([sys.executable, "-m", "venv", venv_path])
     print(f"🧪 Environnement virtuel créé : {venv_path}")
     return venv_path
+
 
 def create_launch_scripts(base_path="."):
     python_exec = os.path.join("venv", "Scripts" if os.name == "nt" else "bin", "python")
@@ -462,14 +530,41 @@ def create_launch_scripts(base_path="."):
         f.write(f'#!/bin/bash\n"{python_exec}" -m uvicorn app.main:app --reload')
     print("🚀 Fichiers de lancement créés")
 
+
 def create_setup_script(base_path="."):
     setup_path = os.path.join(base_path, "setup.bat")
     with open(setup_path, "w", encoding="utf-8") as f:
-        f.write("""@echo off
-call venv\\Scripts\\activate.bat
-python.exe -m pip install --upgrade pip
-pip install -r requirements.txt
-echo Environnement virtuel activé et dépendances installées.
+        f.write(r"""@echo off
+setlocal
+
+REM === Créer le venv s'il n'existe pas ===
+if not exist "venv\Scripts\activate.bat" (
+    where uv >nul 2>nul
+    if %errorlevel%==0 (
+        echo [setup] uv detecte: creation de l'environnement virtuel...
+        uv venv venv
+    ) else (
+        echo [setup] uv non detecte: creation via python -m venv...
+        python -m venv venv
+    )
+)
+
+REM === Activer le venv ===
+call "venv\Scripts\activate.bat"
+
+REM === Installer les dependances ===
+where uv >nul 2>nul
+if %errorlevel%==0 (
+    echo [setup] Installation des dependances avec uv...
+    uv pip install -r requirements.txt
+) else (
+    echo [setup] Installation des dependances avec pip...
+    python -m pip install --upgrade pip
+    pip install -r requirements.txt
+)
+
+echo [setup] Environnement virtuel active et dependances installees.
+endlocal
 """)
     print("📄 setup.bat créé")
 
@@ -479,10 +574,14 @@ def create_custom_entities(base_path="."):
         filename = entity.lower() + ".py"
         sqlmodels_path = os.path.join(base_path, "app", "sqlmodels", filename)
         schemas_path = os.path.join(base_path, "app", "schemas", filename)
-        routes_path = os.path.join(base_path, "app", "routes", filename)
+        routes_path = os.path.join(base_path, "app", "routes", entity.lower() + "_routes.py")
+        repositories_path = os.path.join(base_path, "app", "repositories", entity.lower() + "_repository.py")
+        service_path = os.path.join(base_path, "app", "services", entity.lower() + "_service.py")
+
         with open(sqlmodels_path, "w", encoding="utf-8") as f:
             f.write(generate_sql_schema(entity, entities[entity]))
             print(f"📄 Fichier généré : {sqlmodels_path}")
+
         with open(schemas_path, "w", encoding="utf-8") as f:
             f.write(generate_schema(entity, entities[entity]))
             print(f"📄 Fichier généré : {schemas_path}")
@@ -490,11 +589,73 @@ def create_custom_entities(base_path="."):
         with open(routes_path, "w", encoding="utf-8") as f:
             f.write(generate_getters_routes(entity, entities[entity]))
             print(f"📄 Fichier généré : {routes_path}")
+        
+        with open(repositories_path, "w", encoding="utf-8") as f:
+            f.write(generate_repository(entity, entities[entity]))
+            print(f"📄 Fichier généré : {routes_path}")
 
+        with open(service_path, "w", encoding='utf-8') as f:
+            f.write(generate_service(entity, entities[entity]))
+            print(f"📄 Fichier généré : {routes_path}")
+
+
+def generate_service(entity_name: str, attributes: list):
+    lname = entity_name.lower()
+    plural = lname + "s"
+
+    return f"""from typing import Any, Dict, Optional
+from sqlalchemy.orm import Session
+from app.repositories.{lname}_repository import {entity_name}Repository
+
+class {entity_name}Service:
+    def __init__(self, repo: Optional[{entity_name}Repository] = None):
+        self.repo = repo or {entity_name}Repository()
+
+    # READ (by id)
+    def get_{lname}(self, db: Session, id: int):
+        return self.repo.get(db, id)
+
+    # LIST
+    def list_{plural}(self, db: Session, offset: int = 0, limit: int = 100):
+        return self.repo.list(db, offset=offset, limit=limit)
+
+    # CREATE
+    def create_{lname}(self, db: Session, data: Dict[str, Any]):
+        return self.repo.create(db, data)
+
+    # UPDATE (partial)
+    def update_{lname}(self, db: Session, id: int, data: Dict[str, Any]):
+        obj = self.repo.get(db, id)
+        if not obj:
+            return None
+        # Patch simple et générique : on ne met à jour que les attributs existants
+        for k, v in data.items():
+            if hasattr(obj, k):
+                setattr(obj, k, v)
+        db.add(obj)
+        db.commit()
+        db.refresh(obj)
+        return obj
+
+    # DELETE
+    def delete_{lname}(self, db: Session, id: int) -> bool:
+        return self.repo.delete(db, id)
+"""
+
+
+def generate_repository(entity_name:str, attributes:list):
+    return f"""from sqlalchemy.orm import Session
+from .base_repository import BaseRepository
+from app.sqlmodels.{entity_name.lower()} import {entity_name}
+
+class {entity_name}Repository(BaseRepository[{entity_name}]):
+    def __init__(self):
+        super().__init__({entity_name})
+"""
 
 
 def generate_schema(entity_name:str, attributes:list):
-    schema_content = f"from pydantic import BaseModel\n"
+    schema_content = "from pydantic import BaseModel\n"
     for attr in attributes:
         if is_custom_type(attr.split()[1]):
             schema_content += f"\nfrom app.schemas.{attr.split()[1].lower()} import {attr.split()[1]}\n"
@@ -510,9 +671,11 @@ class {entity_name}(BaseModel):
     schema_content += "\n    class Config:\n        from_attributes = True\n"
     return schema_content
 
+
 def is_custom_type(py_type: str) -> bool:
     not_custom = ["int", "str", "float", "date", "bool", "list", "dict"]
     return not any(py_type.startswith(simple_type) for simple_type in not_custom)
+
 
 def parse_py_types_to_sql_type(py_type: str) -> str:
     if py_type.lower() in ["int", "integer"]:
@@ -530,6 +693,7 @@ def parse_py_types_to_sql_type(py_type: str) -> str:
         print("❓❓❓ Type non reconnu pour l'enregistrement dans la BDD : ")
         print("❓❓❓ " + py_type + "\n")
         return py_type
+
 
 def generate_sql_schema(entity_name:str, attributes:list):
     sql_content = f"""from sqlalchemy import Column, Integer, String, Date, Boolean, Float, ForeignKey
@@ -556,7 +720,7 @@ class {entity_name}(Base):
         if max is not None and var_type == "String":
             var_type = f"String({max})"
 
-        if ".fk" in attr:
+        if fk:
             fk_table = var_type.lower()
             sql_content += f"    {var_name} = Column(Integer, ForeignKey('{fk_table.lower()}.id'), nullable={str(not_null)}, unique={str(unique)})\n"
             continue
@@ -566,42 +730,51 @@ class {entity_name}(Base):
     sql_content += "\n"
     return sql_content
 
+
+
 def generate_getters_routes(entity_name: str, attributes: list) -> str:
+    lname = entity_name.lower()
+    plural = lname + "s"
+
     return f'''from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.sqlmodels.{entity_name.lower()} import {entity_name}
-from app.schemas.{entity_name.lower()} import {entity_name} as {entity_name}Schema
+from app.schemas.{lname} import {entity_name} as {entity_name}Schema
+from app.services.{lname}_service import {entity_name}Service
 
 router = APIRouter()
+service = {entity_name}Service()
 
 @router.get("/", response_model=list[{entity_name}Schema])
-def get_all_{entity_name.lower()}s(db: Session = Depends(get_db)):
-    return db.query({entity_name}).all()
+def get_all_{plural}(db: Session = Depends(get_db)):
+    return service.list_{plural}(db)
 
 @router.get("/{{id}}", response_model={entity_name}Schema)
-def get_{entity_name.lower()}_by_id(id: int, db: Session = Depends(get_db)):
-    obj = db.query({entity_name}).filter({entity_name}.id == id).first()
+def get_{lname}_by_id(id: int, db: Session = Depends(get_db)):
+    obj = service.get_{lname}(db, id)
     if not obj:
         raise HTTPException(status_code=404, detail=f"{entity_name} not found")
     return obj
 '''
+
+
 
 def init_fastapi_project(base_path="."):
     print("🔧 Initialisation du projet FastAPI avec rôles…")
     secret_key = random.SystemRandom().getrandbits(256)
     create_folders(base_path)
     create_files(base_path, secret_key=secret_key)
-    create_gitignore(base_path)
     create_virtualenv(base_path)
     create_launch_scripts(base_path)
     create_setup_script(base_path)
     create_custom_entities(base_path)
     print("✅ Projet FastAPI initialisé avec succès !")
 
+
 def main():
     base_path = "C:\\Users\\thoma\\Desktop\\Boulot\\formation-lemartinel"
     init_fastapi_project(base_path)
+
 
 if __name__ == "__main__":
     main()

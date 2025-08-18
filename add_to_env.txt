@@ -1,0 +1,3 @@
+# Spacetrack Account
+SPACETRACK_USERNAME=xxx
+SPACETRACK_PASSWORD=xxx
