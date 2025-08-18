@@ -7,20 +7,21 @@ from utils import get_entities
 
 # --- Constantes ---
 FOLDERS = [
-    "app", "app/core", "app/routes", "app/schemas", "app/sqlmodels",
+    "app", "app/core", "app/routers", "app/schemas", "app/sqlmodels",
     "app/services", "app/utils", "app/utils/seeds", "app/middleware",
     "app/repositories", "app/services/authentification"
 ]
 
 FILES = [
     "app/main.py", "app/core/config.py", "app/core/database.py",
-    "app/routes/auth.py",
+    "app/routers/auth.py",
     "app/schemas/user.py", "app/schemas/token.py", "app/sqlmodels/__init__.py",
     "app/sqlmodels/user.py", "app/services/authentification/auth.py",
     "app/services/authentification/roles.py",
     "app/utils/seeds/seed_users.py", ".env", "requirements.txt", "README.md",
     "app/middleware/auth_checker.py", ".env.example",
     "app/repositories/base_repository.py", ".gitignore", "entities.txt",
+    "app/repositories/user_repository.py", "app/services/user_service.py"
 ]
 
 REQUIREMENTS = [
@@ -51,16 +52,16 @@ app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
 app.add_middleware(AuthMiddleware)
 
 # inclusion manuelle du router d'auth
-from app.routes.auth import router as auth_router
+from app.routers.auth import router as auth_router
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 
 # découverte dynamique de tous les autres routers
-routes_dir = pathlib.Path(__file__).parent / "routes"
-for module_info in pkgutil.iter_modules([str(routes_dir)]):
+routers_dir = pathlib.Path(__file__).parent / "routers"
+for module_info in pkgutil.iter_modules([str(routers_dir)]):
     name = module_info.name
     if name.startswith("_") or name == "auth":
         continue
-    module = importlib.import_module(f"app.routes.{name}")
+    module = importlib.import_module(f"app.routers.{name}")
     router = getattr(module, "router", None)
     if router:
         prefix = f"/{name}"
@@ -80,13 +81,11 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from jose import JWTError
 from app.services.authentification.auth import decode_access_token
-from dotenv import load_dotenv
-import os
+from app.core.config import settings
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        load_dotenv()
-        if os.getenv("DEBUG", "False").lower() == "true":
+        if settings.DEBUG:
             authorized_routes = ["/docs", "/redoc", "/openapi.json"]
             if request.url.path in authorized_routes:
                 return await call_next(request)
@@ -96,7 +95,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
             return JSONResponse(
-            status_code=401, content={"detail": "Missing or invalid Authorization header"}
+                status_code=401, content={"detail": "Missing or invalid Authorization header"}
             )
 
         token = auth_header[7:]  # Supprime "Bearer "
@@ -105,7 +104,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             request.state.user = user
         except JWTError:
             return JSONResponse(
-            status_code=401, content={"detail": "Invalid token"}
+                status_code=401, content={"detail": "Invalid token"}
             )
 
         response = await call_next(request)
@@ -185,36 +184,26 @@ def get_db():
         db.close()
 '''
     
-    elif file == "app/routes/auth.py":
+    elif file == "app/routers/auth.py":
         return '''from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jose import JWTError
-from app.services.authentification.auth import verify_password, create_access_token, decode_access_token
+from app.services.authentification.auth import verify_password, create_access_token
 from app.core.config import settings
-from app.schemas.user import User
 from app.schemas.token import Token
-from app.sqlmodels.user import UserInDB
-
-from app.core.database import SessionLocal
+from app.core.database import get_db
+from sqlalchemy.orm import Session
+from app.services.user_service import UserService
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
-
-def authenticate_user(email: str, password: str):
-    db = SessionLocal()
-    try:
-        user = db.query(UserInDB).filter(UserInDB.email == email).first()
-        if not user or not verify_password(password, user.hashed_password):
-            return None
-        return user
-    finally:
-        db.close()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")  # pas de slash initial
+user_service = UserService()
 
 @router.post("/token", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = authenticate_user(form_data.username, form_data.password)
-    if not user:
+async def login(form_data: OAuth2PasswordRequestForm = Depends(),
+                db: Session = Depends(get_db)):
+    user = user_service.get_by_email(db, form_data.username)
+    if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
     access_token = create_access_token(
         data={"sub": user.email, "role": user.role},
@@ -222,7 +211,34 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     )
     return {"access_token": access_token, "token_type": "bearer"}
 '''
-    
+
+
+    elif file == "app/repositories/user_repository.py":
+        return """from sqlalchemy.orm import Session
+from app.repositories.base_repository import BaseRepository
+from app.sqlmodels.user import UserInDB
+
+class UserRepository(BaseRepository[UserInDB]):
+    def __init__(self):
+        super().__init__(UserInDB)
+
+    def get_by_email(self, db: Session, email: str) -> UserInDB | None:
+        return db.query(UserInDB).filter(UserInDB.email == email).first()
+"""
+
+    elif file == "app/services/user_service.py":
+        return """from sqlalchemy.orm import Session
+from app.repositories.user_repository import UserRepository
+
+class UserService:
+    def __init__(self, repo: UserRepository | None = None):
+        self.repo = repo or UserRepository()
+
+    def get_by_email(self, db: Session, email: str):
+        return self.repo.get_by_email(db, email)
+"""
+
+
     elif file == "app/schemas/user.py":
         return '''from pydantic import BaseModel
 
@@ -298,7 +314,7 @@ from jose import JWTError
 from app.services.authentification.auth import decode_access_token
 from app.schemas.token import TokenData
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 def get_current_user(token: str = Depends(oauth2_scheme)) -> TokenData:
     try:
@@ -578,7 +594,7 @@ def create_custom_entities(base_path="."):
         filename = entity.lower() + ".py"
         sqlmodels_path = os.path.join(base_path, "app", "sqlmodels", filename)
         schemas_path = os.path.join(base_path, "app", "schemas", filename)
-        routes_path = os.path.join(base_path, "app", "routes", filename)
+        routers_path = os.path.join(base_path, "app", "routers", filename)
         repositories_path = os.path.join(base_path, "app", "repositories", entity.lower() + "_repository.py")
         service_path = os.path.join(base_path, "app", "services", entity.lower() + "_service.py")
 
@@ -590,17 +606,17 @@ def create_custom_entities(base_path="."):
             f.write(generate_schema(entity, entities[entity]))
             print(f"📄 Fichier généré : {schemas_path}")
         
-        with open(routes_path, "w", encoding="utf-8") as f:
+        with open(routers_path, "w", encoding="utf-8") as f:
             f.write(generate_getters_routes(entity, entities[entity]))
-            print(f"📄 Fichier généré : {routes_path}")
+            print(f"📄 Fichier généré : {routers_path}")
         
         with open(repositories_path, "w", encoding="utf-8") as f:
             f.write(generate_repository(entity, entities[entity]))
-            print(f"📄 Fichier généré : {routes_path}")
+            print(f"📄 Fichier généré : {repositories_path}")
 
         with open(service_path, "w", encoding='utf-8') as f:
             f.write(generate_service(entity, entities[entity]))
-            print(f"📄 Fichier généré : {routes_path}")
+            print(f"📄 Fichier généré : {service_path}")
 
 
 def generate_service(entity_name: str, attributes: list):
@@ -743,11 +759,12 @@ def generate_getters_routes(entity_name: str, attributes: list) -> str:
     else:
         plural = lname + "s"
 
-    return f'''from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from app.core.database import get_db
+    return f'''from fastapi import Body, APIRouter, HTTPException, Depends
 from app.schemas.{lname} import {entity_name} as {entity_name}Schema
 from app.services.{lname}_service import {entity_name}Service
+from sqlalchemy.orm import Session
+from app.core.database import get_db
+
 
 router = APIRouter()
 service = {entity_name}Service()
@@ -760,8 +777,25 @@ def get_all_{plural}(db: Session = Depends(get_db)):
 def get_{lname}_by_id(id: int, db: Session = Depends(get_db)):
     obj = service.get_{lname}(db, id)
     if not obj:
-        raise HTTPException(status_code=404, detail=f"{entity_name} not found")
+        raise HTTPException(status_code=404, detail="{entity_name} not found")
     return obj
+
+@router.post("/", response_model={entity_name}Schema, status_code=201)
+def create_{lname}(payload: dict = Body(...), db: Session = Depends(get_db)):
+    return service.create_{lname}(db, payload)
+
+@router.patch("/{{id}}", response_model={entity_name}Schema)
+def update_{lname}(id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
+    obj = service.update_{lname}(db, id, payload)
+    if not obj:
+        raise HTTPException(status_code=404, detail="{entity_name} not found")
+    return obj
+
+@router.delete("/{{id}}", status_code=204)
+def delete_{lname}(id: int, db: Session = Depends(get_db)):
+    ok = service.delete_{lname}(db, id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="{entity_name} not found")
 '''
 
 
