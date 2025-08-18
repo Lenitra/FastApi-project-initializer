@@ -22,7 +22,7 @@ def get_entities():
     entities = {}
     entity_name = ""
 
-    with open("entities.txt", "r", encoding="utf-8") as f:
+    with open("config/entities.txt", "r", encoding="utf-8") as f:
         lines = [line.strip() for line in f.readlines()]
 
     for line in lines:

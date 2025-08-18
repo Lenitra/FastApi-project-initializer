@@ -447,7 +447,7 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 """.format(secret_key)
         # ajouter le contenu du fichier add_to_env.txt
-        add_to_env_path = os.path.join("add_to_env.txt")
+        add_to_env_path = os.path.join("config/add_to_env.txt")
         if os.path.exists(add_to_env_path):
             with open(add_to_env_path, "r", encoding="utf-8") as add_file:
                 envfile += "\n" + add_file.read()
@@ -800,7 +800,7 @@ def delete_{lname}(id: int, db: Session = Depends(get_db)):
 
 
 def copy_entities_txt(base_path):
-    local_entities_txt = "entities.txt"
+    local_entities_txt = "config/entities.txt"
     dist_entities_txt = os.path.join(base_path, "entities.txt")
 
     with open(local_entities_txt, "r") as f:
