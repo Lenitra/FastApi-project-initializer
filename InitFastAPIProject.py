@@ -20,7 +20,7 @@ FILES = [
     "app/services/roles.py", "app/utils/__init__.py", "app/utils/seeds/__init__.py",
     "app/utils/seeds/seed_users.py", "app/middleware/__init__.py", ".env", "requirements.txt", "README.md",
     "app/middleware/auth_checker.py", ".env.example", "app/repositories/__init__.py", 
-    "app/repositories/base_repository.py", ".gitignore"
+    "app/repositories/base_repository.py", ".gitignore", "entities.txt",
 ]
 
 REQUIREMENTS = [
@@ -765,6 +765,18 @@ def get_{lname}_by_id(id: int, db: Session = Depends(get_db)):
 '''
 
 
+def copy_entities_txt(base_path):
+    local_entities_txt = "entities.txt"
+    dist_entities_txt = os.path.join(base_path, "entities.txt")
+
+    with open(local_entities_txt, "r") as f:
+        content = f.read()
+
+    with open(dist_entities_txt, "w") as f:
+        f.write(content)
+        
+
+
 def init_fastapi_project(base_path="."):
     print("🔧 Initialisation du projet FastAPI avec rôles…")
     secret_key = random.SystemRandom().getrandbits(256)
@@ -774,7 +786,9 @@ def init_fastapi_project(base_path="."):
     create_launch_scripts(base_path)
     create_setup_script(base_path)
     create_custom_entities(base_path)
+    copy_entities_txt(base_path)
     print("✅ Projet FastAPI initialisé avec succès !")
+
 
 
 def main():
