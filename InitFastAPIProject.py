@@ -730,12 +730,18 @@ class {entity_name}(Base):
         not_null = ".nn" in attr
         unique = ".unique" in attr
         fk = ".fk" in attr
+
+        default = None
+        try:
+            default = attr.split(".default(")[1].strip().split(")")[0].strip()
+        except Exception:
+            default = None
+
         max = None
         var_type = parse_py_types_to_sql_type(var_type)
         
         if ".max" in attr:
             max = attr.split(".max")[1].split()[0].strip()
-
 
         if max is not None and var_type == "String":
             var_type = f"String({max})"
@@ -745,7 +751,11 @@ class {entity_name}(Base):
             sql_content += f"    {var_name} = Column(Integer, ForeignKey('{fk_table.lower()}.id'), nullable={str(not_null)}, unique={str(unique)})\n"
             continue
 
-        sql_content += f"    {var_name} = Column({var_type}, nullable={str(not_null)}, unique={str(unique)})\n"
+        sql_content += f"    {var_name} = Column({var_type}, nullable={str(not_null)}, unique={str(unique)}"
+        if default is not None:
+            sql_content += f", default={default}"
+        sql_content += ")\n"
+
 
     sql_content += "\n"
     return sql_content

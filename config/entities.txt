@@ -1,56 +1,40 @@
-Satellite                       # Informations générales sur un satellite
-- name str .max50 .unique .nn                  # Nom du satellite (ex: ISS)
-- object_id str .max20 .unique .nn             # ID standard international (ex: 1998-067A)
-- norad_cat_id int .unique .nn                 # Identifiant NORAD (ex: 25544)
-- object_type str .max20                       # Type d’objet (ex: PAYLOAD, DEBRIS)
-- classification str .max5                     # Niveau de classification (U = Unclassified)
-- rcs_size str .max15                          # Taille estimée de la surface radar (ex: LARGE)
-- country str .max10                           # Code pays ou entité opératrice (ex: USA, RUS)
-- launch_date date .past .nn                   # Date de lancement (dans le passé)
-- launch_site str .max20                       # Lieu de lancement (ex: TTMTR)
-- decay_date date .past                        # Date de rentrée ou désorbitation (nullable)
+Satellite                       # Identité stable d'un objet catalogué
+- name str .max50 .unique .nn                  # Nom (ex: ISS (ZARYA))
+- object_id str .max20 .unique .nn             # ID international (ex: 1998-067A)
+- norad_cat_id int .unique .nn                 # NORAD (ex: 25544)
+- object_type str .max20                       # PAYLOAD, DEBRIS, ROCKET BODY...
+- classification str .max5                     # U, C, S...
+- country str .max10                           # Code pays/opérateur (ex: USA)
+- launch_date date .past                       # Optionnel si inconnu
+- launch_site str .max20                       # Code site lancement (ex: TTMTR)
+- decay_date date .past                        # Nullable si actif
+- created_at datetime .nn .auto                # Audit
+- updated_at datetime .nn .auto                # Audit
 
-TLESet                           # Jeu TLE à une époque donnée (équiv. GPSet)
-- satellite Satellite .fk .nn                  # Référence au satellite concerné
-- epoch datetime .nn                           # Époque TLE (UTC)
-- creation_date datetime .nn                   # Date de génération Space-Track (UTC)
-- element_set_no int .nn                       # ELEMENT_SET_NO (Space-Track)
-- file_id int                                  # ID du fichier source (Space-Track)
-- source str .max50                            # Source des données (ex: Space-Track)
-
-TLEOrbitalElement                # Éléments orbitaux extraits du TLE
-- tleset TLESet .fk .nn                         # Référence au TLESet concerné
-- mean_motion float .nn                         # Révolutions par jour
-- eccentricity float .nn                        # Excentricité (0..1)
-- inclination float .nn                         # Inclinaison en degrés
-- ra_of_asc_node float .nn                      # RAAN en degrés
-- arg_of_pericenter float .nn                   # Argument du périgée en degrés
-- mean_anomaly float .nn                        # Anomalie moyenne en degrés
-- ephemeris_type int                            # Type d’éphéméride (0 = SGP4)
-- mean_motion_dot float                         # Variation 1ère du mouvement moyen
-- mean_motion_ddot float                        # Variation 2nde du mouvement moyen
-- bstar float                                   # Coefficient de freinage atmosphérique
-- rev_at_epoch int                              # Révolution à l’époque
-- mean_element_theory str .max10                # Théorie (ex: SGP4)
-
-TLEDynamics                      # Paramètres dérivés des TLE
-- tleset TLESet .fk .nn                         # Référence au TLESet concerné
-- semimajor_axis float .nn                      # Demi-grand axe en km
-- period float .nn                              # Période orbitale en minutes
-- apoapsis float .nn                            # Apogée en km
-- periapsis float .nn                           # Périgée en km
-
-TLEMeta                          # Métadonnées et lignes TLE brutes
-- tleset TLESet .fk .nn                         # Référence au TLESet concerné
-- tle_line0 str .max100                         # Ligne 0 (nom, optionnelle)
-- tle_line1 str .max100 .nn                     # Ligne 1 (identifiants + BSTAR)
-- tle_line2 str .max100 .nn                     # Ligne 2 (éléments orbitaux)
-- ref_frame str .max10                          # Cadre de réf. (ex: TEME)
-- center_name str .max10                        # Centre (ex: EARTH)
-- time_system str .max10                        # Système temps (ex: UTC)
-
-# Contraintes composées (recommandées)
-# - UNIQUE(TLESet.satellite, TLESet.epoch, TLESet.element_set_no)
-# - UNIQUE(TLEOrbitalElement.tleset)
-# - UNIQUE(TLEDynamics.tleset)
-# - UNIQUE(TLEMeta.tleset)
+TLELatest                       # Dernier TLE connu (1:1 avec Satellite)
+- satellite Satellite .fk .unique .nn          # 1 ligne par satellite
+- epoch datetime .nn                           # EPOCH (UTC)
+- creation_date datetime .nn                   # CREATION_DATE (Space-Track)
+- element_set_no int .nn                       # ELEMENT_SET_NO
+- file_id int                                  # FILE (Space-Track)
+- source str .max50 .default("Space-Track")    # Source d’ingestion
+- tle_line0 str .max100                        # Ligne 0 (nom)
+- tle_line1 str .max100 .nn                    # Ligne 1
+- tle_line2 str .max100 .nn                    # Ligne 2
+- mean_motion float .nn                        # rev/day
+- eccentricity float .nn                       # 0..1 (en JSON déjà décimal)
+- inclination float .nn                        # deg
+- ra_of_asc_node float .nn                     # RAAN deg
+- arg_of_pericenter float .nn                  # deg
+- mean_anomaly float .nn                       # deg
+- mean_motion_dot float                        # 1/day^2
+- mean_motion_ddot float                       # 1/day^3
+- bstar float                                  # Drag term
+- rev_at_epoch int                             # Revolution number
+- ephemeris_type int .default(0)               # 0 = SGP4
+- mean_element_theory str .max10 .default("SGP4")
+- ref_frame str .max10 .default("TEME")
+- center_name str .max10 .default("EARTH")
+- time_system str .max10 .default("UTC")
+- tle_hash str .max64 .unique .nn              # SHA-256(tle_line1||tle_line2) pour idempotence
+- updated_at datetime .nn .auto                # Horodatage de la dernière mise à jour
