@@ -826,7 +826,7 @@ def init_fastapi_project(base_path="."):
 
 
 def main():
-    base_path = "C:\\Users\\thoma\\Desktop\\Boulot\\formation-lemartinel"
+    base_path = os.path.abspath("generated")
     init_fastapi_project(base_path)
 
 

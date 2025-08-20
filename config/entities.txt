@@ -10,41 +10,47 @@ Satellite                       # Informations générales sur un satellite
 - launch_site str .max20                       # Lieu de lancement (ex: TTMTR)
 - decay_date date .past                        # Date de rentrée ou désorbitation (nullable)
 
-GPSet                            # Jeu d’éléments orbitaux à une époque donnée
-- satellite Satellite .fk                      # Référence au satellite concerné
-- epoch datetime .nn                           # Époque de validité des éléments orbitaux
-- creation_date datetime .nn                   # Date de génération du jeu GP
-- gp_id int .unique .nn                        # Identifiant unique Space-Track
+TLESet                           # Jeu TLE à une époque donnée (équiv. GPSet)
+- satellite Satellite .fk .nn                  # Référence au satellite concerné
+- epoch datetime .nn                           # Époque TLE (UTC)
+- creation_date datetime .nn                   # Date de génération Space-Track (UTC)
+- element_set_no int .nn                       # ELEMENT_SET_NO (Space-Track)
 - file_id int                                  # ID du fichier source (Space-Track)
 - source str .max50                            # Source des données (ex: Space-Track)
 
-GPOrbitalElement                # Éléments keplériens de base (données physiques d’orbite)
-- gpset GPSet .fk                              # Référence au jeu GP concerné
-- mean_motion float .nn                        # Révolutions par jour
-- eccentricity float .nn                       # Excentricité de l’orbite (0 ≈ circulaire)
-- inclination float .nn                        # Inclinaison en degrés (0 à 180)
-- ra_of_asc_node float .nn                     # Ascension droite du nœud ascendant (RAAN), en degrés
-- arg_of_pericenter float .nn                  # Argument du périgée, en degrés
-- mean_anomaly float .nn                       # Anomalie moyenne, en degrés
-- ephemeris_type int                           # Type d’éphéméride (ex: 0 = SGP4)
-- mean_motion_dot float                        # Variation première du mouvement moyen
-- mean_motion_ddot float                       # Variation seconde du mouvement moyen
-- bstar float                                  # Coefficient de freinage atmosphérique
-- rev_at_epoch int                             # Révolution à l’époque (compteur d’orbite)
-- mean_element_theory str .max10               # Théorie utilisée (ex: SGP4)
+TLEOrbitalElement                # Éléments orbitaux extraits du TLE
+- tleset TLESet .fk .nn                         # Référence au TLESet concerné
+- mean_motion float .nn                         # Révolutions par jour
+- eccentricity float .nn                        # Excentricité (0..1)
+- inclination float .nn                         # Inclinaison en degrés
+- ra_of_asc_node float .nn                      # RAAN en degrés
+- arg_of_pericenter float .nn                   # Argument du périgée en degrés
+- mean_anomaly float .nn                        # Anomalie moyenne en degrés
+- ephemeris_type int                            # Type d’éphéméride (0 = SGP4)
+- mean_motion_dot float                         # Variation 1ère du mouvement moyen
+- mean_motion_ddot float                        # Variation 2nde du mouvement moyen
+- bstar float                                   # Coefficient de freinage atmosphérique
+- rev_at_epoch int                              # Révolution à l’époque
+- mean_element_theory str .max10                # Théorie (ex: SGP4)
 
-GPDynamics                      # Paramètres calculés à partir des éléments orbitaux
-- gpset GPSet .fk                              # Référence au jeu GP concerné
-- semimajor_axis float .nn                     # Demi-grand axe en km
-- period float .nn                             # Période orbitale en minutes
-- apoapsis float .nn                           # Apogée en km (point le plus éloigné)
-- periapsis float .nn                          # Périgée en km (point le plus proche)
+TLEDynamics                      # Paramètres dérivés des TLE
+- tleset TLESet .fk .nn                         # Référence au TLESet concerné
+- semimajor_axis float .nn                      # Demi-grand axe en km
+- period float .nn                              # Période orbitale en minutes
+- apoapsis float .nn                            # Apogée en km
+- periapsis float .nn                           # Périgée en km
 
-GPMeta                          # Métadonnées de contexte et représentation TLE
-- gpset GPSet .fk                              # Référence au jeu GP concerné
-- tle_line0 str .max100                        # Ligne 0 du TLE (nom)
-- tle_line1 str .max100                        # Ligne 1 du TLE (identifiants + BSTAR)
-- tle_line2 str .max100                        # Ligne 2 du TLE (éléments orbitaux)
-- ref_frame str .max10                         # Cadre de référence (ex: TEME)
-- center_name str .max10                       # Centre de gravité (ex: EARTH)
-- time_system str .max10                       # Système temporel (ex: UTC)
+TLEMeta                          # Métadonnées et lignes TLE brutes
+- tleset TLESet .fk .nn                         # Référence au TLESet concerné
+- tle_line0 str .max100                         # Ligne 0 (nom, optionnelle)
+- tle_line1 str .max100 .nn                     # Ligne 1 (identifiants + BSTAR)
+- tle_line2 str .max100 .nn                     # Ligne 2 (éléments orbitaux)
+- ref_frame str .max10                          # Cadre de réf. (ex: TEME)
+- center_name str .max10                        # Centre (ex: EARTH)
+- time_system str .max10                        # Système temps (ex: UTC)
+
+# Contraintes composées (recommandées)
+# - UNIQUE(TLESet.satellite, TLESet.epoch, TLESet.element_set_no)
+# - UNIQUE(TLEOrbitalElement.tleset)
+# - UNIQUE(TLEDynamics.tleset)
+# - UNIQUE(TLEMeta.tleset)
