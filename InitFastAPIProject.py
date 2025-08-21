@@ -639,9 +639,25 @@ class {entity_name}Service:
     def list_{plural}(self, db: Session, offset: int = 0, limit: int = 100):
         return self.repo.list(db, offset=offset, limit=limit)
 
-    # CREATE
-    def create_{lname}(self, db: Session, data: Dict[str, Any]):
-        return self.repo.create(db, data)
+    # UPDATE/CREATE
+    def save(self, db: Session, obj_in: dict) -> T:
+        obj = None
+
+        obj_id = obj_in.get('id')
+        if obj_id is not None:
+            obj = db.get(self.model, obj_id)
+
+        if obj:
+            for key, value in obj_in.items():
+                setattr(obj, key, value)
+
+        else:
+            obj = self.model(**obj_in)
+            db.add(obj)
+
+        db.commit()
+        db.refresh(obj)
+        return obj
 
     # UPDATE (partial)
     def update_{lname}(self, db: Session, id: int, data: Dict[str, Any]):
