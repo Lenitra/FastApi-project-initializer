@@ -1,58 +1,3 @@
-# ZERMANI - FastAPI Project Initializer
-
-**ZERMANI** = Zones Extensibles, Routage, Modèles, Authentification, Normalisation, Initialisation
-
-Un générateur de projet FastAPI moderne avec architecture modulaire et système de templates.
-
-## 🚀 Fonctionnalités
-
-- **Architecture modulaire** : Séparation claire des couches (models, schemas, services, repositories)
-- **Système de templates** : Templates réutilisables et modifiables
-- **Génération d'entités** : Création automatique de CRUD complet à partir de définitions simples
-- **Authentification JWT** : Système d'auth avec rôles intégré
-- **Configuration flexible** : Variables d'environnement et configuration centralisée
-- **Environnement virtuel** : Setup automatique avec scripts de lancement
-
-## 📁 Structure du projet généré
-
-```
-generated/
-├── app/
-│   ├── main.py                     # Point d'entrée FastAPI
-│   ├── utils/
-│   │   ├── core/
-│   │   │   ├── config.py          # Configuration et settings
-│   │   │   └── database.py        # Configuration SQLAlchemy
-│   │   └── seeds/
-│   │       └── seed_users.py      # Données initiales
-│   ├── routers/                   # Endpoints FastAPI
-│   │   ├── auth.py               # Routes d'authentification
-│   │   └── [entity].py           # Routes générées par entité
-│   ├── schemas/                   # Schémas Pydantic
-│   │   ├── user.py
-│   │   ├── token.py
-│   │   └── [entity].py
-│   ├── sqlmodels/                 # Modèles SQLAlchemy
-│   │   ├── __init__.py
-│   │   ├── user.py
-│   │   └── [entity].py
-│   ├── services/                  # Logique métier
-│   │   ├── authentification/
-│   │   ├── user_service.py
-│   │   └── [entity]_service.py
-│   ├── repositories/              # Couche d'accès aux données
-│   │   ├── base_repository.py
-│   │   ├── user_repository.py
-│   │   └── [entity]_repository.py
-│   └── middleware/
-│       └── auth_checker.py        # Middleware d'authentification
-├── venv/                          # Environnement virtuel
-├── .env                          # Variables d'environnement
-├── requirements.txt              # Dépendances
-└── setup.bat / run.bat          # Scripts de lancement
-```
-
-## 🛠️ Installation et Utilisation
 # Format du fichier entities.txt
 
 Ce document décrit le format du fichier `config/entities.txt` utilisé par le générateur FastAPI pour définir les entités de votre application.
@@ -224,15 +169,3 @@ Pour chaque entité définie, le générateur crée automatiquement :
        return repo.list(db)
    # ...
    ```
-
-
-### 3. Setup du projet généré
-
-```bash
-cd generated
-setup.bat    # Installation des dépendances
-run.bat      # Lancement du serveur
-```
-
-L'API sera disponible sur http://127.0.0.1:8000
-Documentation interactive : http://127.0.0.1:8000/docs

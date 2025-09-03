@@ -1,6 +1,5 @@
+# region
 
-
-#region 
 
 def get_entities():
     """
@@ -9,7 +8,7 @@ def get_entities():
     Le fichier doit être structuré de la façon suivante :
     Chaque entité est définie par une ligne sans indentation ni tiret, suivie de ses attributs précédés de '- '.
     Exemple :
-        User
+        User .w Admin
         - name
         - email
         Product
@@ -36,4 +35,5 @@ def get_entities():
 
     return entities
 
-#endregion
+
+# endregion

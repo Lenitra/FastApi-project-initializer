@@ -1,40 +1,21 @@
-Satellite                       # Identité stable d'un objet catalogué
-- name str .max50 .unique .nn                  # Nom (ex: ISS (ZARYA))
-- object_id str .max20 .unique .nn             # ID international (ex: 1998-067A)
-- norad_cat_id int .unique .nn                 # NORAD (ex: 25544)
-- object_type str .max20                       # PAYLOAD, DEBRIS, ROCKET BODY...
-- classification str .max5                     # U, C, S...
-- country str .max10                           # Code pays/opérateur (ex: USA)
-- launch_date date .past                       # Optionnel si inconnu
-- launch_site str .max20                       # Code site lancement (ex: TTMTR)
-- decay_date date .past                        # Nullable si actif
-- created_at datetime .nn .auto                # Audit
-- updated_at datetime .nn .auto                # Audit
-
-TLELatest                       # Dernier TLE connu (1:1 avec Satellite)
-- satellite Satellite .fk .unique .nn          # 1 ligne par satellite
-- epoch datetime .nn                           # EPOCH (UTC)
-- creation_date datetime .nn                   # CREATION_DATE (Space-Track)
-- element_set_no int .nn                       # ELEMENT_SET_NO
-- file_id int                                  # FILE (Space-Track)
-- source str .max50 .default("Space-Track")    # Source d’ingestion
-- tle_line0 str .max100                        # Ligne 0 (nom)
-- tle_line1 str .max100 .nn                    # Ligne 1
-- tle_line2 str .max100 .nn                    # Ligne 2
-- mean_motion float .nn                        # rev/day
-- eccentricity float .nn                       # 0..1 (en JSON déjà décimal)
-- inclination float .nn                        # deg
-- ra_of_asc_node float .nn                     # RAAN deg
-- arg_of_pericenter float .nn                  # deg
-- mean_anomaly float .nn                       # deg
-- mean_motion_dot float                        # 1/day^2
-- mean_motion_ddot float                       # 1/day^3
-- bstar float                                  # Drag term
-- rev_at_epoch int                             # Revolution number
-- ephemeris_type int .default(0)               # 0 = SGP4
-- mean_element_theory str .max10 .default("SGP4")
-- ref_frame str .max10 .default("TEME")
-- center_name str .max10 .default("EARTH")
-- time_system str .max10 .default("UTC")
-- tle_hash str .max64 .unique .nn              # SHA-256(tle_line1||tle_line2) pour idempotence
-- updated_at datetime .nn .auto                # Horodatage de la dernière mise à jour
+TLE .r user .w manager .d manager
+- nom str .maxlen(24)
+- norad int .unique
+- classification str .len(1)
+- designateur_international str
+- epoch datetime
+- mouvement_moyen_deriv1 float
+- mouvement_moyen_deriv2 float
+- bstar float
+- type_element int .range(0..9)
+- numero_ensemble_elements int
+- inclinaison_deg float
+- ascension_droite_noeud_ascendant_deg float
+- excentricite float .range(0..1)
+- argument_perigee_deg float
+- anomalie_moyenne_deg float
+- mouvement_moyen_rev_par_jour float
+- numero_revolution int
+- ligne1 str .len(69) .nn
+- ligne2 str .len(69) .nn
+- updated_at datetime
