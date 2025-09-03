@@ -225,11 +225,12 @@ DEBUG=True
 ## 🔄 Workflow de développement
 
 1. **Définir** vos entités dans `config/entities.txt`
-2. **Générer** le projet avec `python InitFastAPIProject.py`
-3. **Personnaliser** la configuration dans `generated/.env`
-4. **Installer** les dépendances avec `generated/setup.bat`
-5. **Lancer** l'application avec `generated/run.bat`
-6. **Tester** l'API sur http://127.0.0.1:8000/docs
+2. **Définir** vos variables d'environnement supplémentaires `config/add_to_env.txt`
+3. **Générer** le projet avec `python InitFastAPIProject.py`
+4. **Personnaliser** la configuration dans `generated/.env`
+5. **Installer** les dépendances avec `generated/setup.bat`
+6. **Lancer** l'application avec `generated/run.bat`
+7. **Tester** l'API sur http://127.0.0.1:8000/docs
 
 ## 📚 Fonctionnalités avancées
 
