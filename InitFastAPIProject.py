@@ -94,7 +94,7 @@ def create_custom_entities(base_path="."):
         )
 
         with open(sqlmodels_path, "w", encoding="utf-8") as f:
-            f.write(generate_sql_schema(entity, entities[entity]))
+            f.write(generate_sql_model(entity, entities[entity]))
             print(f"📄 Fichier généré : {sqlmodels_path}")
 
         with open(routers_path, "w", encoding="utf-8") as f:
@@ -108,8 +108,8 @@ def create_custom_entities(base_path="."):
 
 def generate_repository(entity_name: str):
     return f"""from sqlalchemy.orm import Session
-from .base_repository import BaseRepository
-from app.sqlmodels.{entity_name.lower()} import {entity_name}
+from app.repositories.base_repository import BaseRepository
+from app.entities.{entity_name.lower()} import {entity_name}
 
 class {entity_name}Repository(BaseRepository[{entity_name}]):
     def __init__(self):
@@ -117,74 +117,37 @@ class {entity_name}Repository(BaseRepository[{entity_name}]):
 """
 
 
-def generate_sql_schema(entity_name: str, attributes: list):
-    sql_content = "from sqlmodel import SQLModel, Field, Column\n"
-    sql_content += "from typing import Optional\n"
+def generate_sql_model(entity_name: str, attributes: list):
+    sql_content = "from sqlmodel import SQLModel, Field\n"
     sql_content += "from datetime import datetime, date\n\n"
 
     # Add imports for custom types
+    custom_types = set()
     for attr in attributes:
-        if is_custom_type(attr.split()[1]):
-            sql_content += f"from app.sqlmodels.{attr.split()[1].lower()} import {attr.split()[1]}\n"
+        attr_parts = attr.split()
+        if len(attr_parts) > 1 and _is_custom_type(attr_parts[1]):
+            custom_types.add(attr_parts[1])
+    
+    for custom_type in custom_types:
+        sql_content += f"from app.entities.{custom_type.lower()} import {custom_type}\n"
 
     sql_content += f"\nclass {entity_name}(SQLModel, table=True):\n"
     sql_content += f'    __tablename__ = "{entity_name.lower()}"\n\n'
-    sql_content += "    id: Optional[int] = Field(default=None, primary_key=True)\n"
+    sql_content += "    id: int = Field(default=None, primary_key=True)\n"
 
     for attr in attributes:
-        var_name = attr.split()[0]
-        var_type = attr.split()[1] if len(attr.split()) > 1 else "str"
+        attr_parts = attr.split()
+        var_name = attr_parts[0]
+        var_type = attr_parts[1] if len(attr_parts) > 1 else "str"
 
-        not_null = ".nn" in attr
-        unique = ".unique" in attr
-        fk = ".fk" in attr
-
-        default = None
-        try:
-            default = attr.split(".default(")[1].strip().split(")")[0].strip()
-        except Exception:
-            default = None
-
-        max_length = None
-        if ".max" in attr:
-            max_length = attr.split(".max")[1].split()[0].strip()
-
+        # Parse modifiers
+        modifiers = _parse_attribute_modifiers(attr)
+        
         # Convert Python types to SQLModel types
-        if var_type.lower() in ["int", "integer"]:
-            field_type = "int"
-        elif var_type.lower() in ["str", "string"]:
-            field_type = "str"
-        elif var_type.lower() in ["float", "decimal"]:
-            field_type = "float"
-        elif var_type.lower() in ["bool", "boolean"]:
-            field_type = "bool"
-        elif var_type.lower() in ["date"]:
-            field_type = "date"
-        elif var_type.lower() in ["datetime"]:
-            field_type = "datetime"
-        else:
-            field_type = var_type
-
-        # Make optional if not required
-        if not not_null:
-            field_type = f"Optional[{field_type}]"
+        field_type = _convert_type_to_sqlmodel(var_type)
 
         # Build Field parameters
-        field_params = []
-        if default is not None:
-            field_params.append(f"default={default}")
-        elif not not_null:
-            field_params.append("default=None")
-
-        if unique:
-            field_params.append("unique=True")
-
-        if fk:
-            fk_table = var_type.lower()
-            field_params.append(f'foreign_key="{fk_table}.id"')
-
-        if max_length and field_type.startswith(("str", "Optional[str]")):
-            field_params.append(f"max_length={max_length}")
+        field_params = _build_field_parameters(modifiers, var_type)
 
         field_def = f"Field({', '.join(field_params)})" if field_params else "Field()"
         sql_content += f"    {var_name}: {field_type} = {field_def}\n"
@@ -192,9 +155,113 @@ def generate_sql_schema(entity_name: str, attributes: list):
     return sql_content
 
 
-def is_custom_type(py_type: str) -> bool:
-    not_custom = ["int", "str", "float", "date", "bool", "list", "dict"]
-    return not any(py_type.startswith(simple_type) for simple_type in not_custom)
+def _parse_attribute_modifiers(attr: str) -> dict:
+    modifiers = {
+        'not_null': '.nn' in attr,
+        'unique': '.unique' in attr,
+        'foreign_key': '.fk' in attr,
+        'default': None,
+        'max_length': None,
+        'range_min': None,
+        'range_max': None
+    }
+    
+    # Parse default value
+    if '.default(' in attr:
+        try:
+            start = attr.find('.default(') + len('.default(')
+            end = attr.find(')', start)
+            if end != -1:
+                modifiers['default'] = attr[start:end].strip()
+        except:  # noqa: E722
+            pass
+    
+    # Parse max length - look for .len( followed by digits
+    if '.len(' in attr:
+        try:
+            start = attr.find('.len(') + len('.len(')
+            end = attr.find(')', start)
+            if end != -1:
+                modifiers['max_length'] = attr[start:end].strip()
+        except:  # noqa: E722
+            pass
+    
+    # Parse range - look for .range(min, max) or .range(min,) or .range(,max)
+    if '.range(' in attr:
+        try:
+            start = attr.find('.range(') + len('.range(')
+            end = attr.find(')', start)
+            if end != -1:
+                range_content = attr[start:end].strip()
+                if ',' in range_content:
+                    range_parts = [part.strip() for part in range_content.split(',')]
+                    # Handle min value (first part)
+                    if len(range_parts) >= 1 and range_parts[0]:
+                        modifiers['range_min'] = range_parts[0]
+                    # Handle max value (second part)
+                    if len(range_parts) >= 2 and range_parts[1]:
+                        modifiers['range_max'] = range_parts[1]
+                else:
+                    # Single value case - treat as both min and max
+                    if range_content:
+                        modifiers['range_min'] = range_content
+                        modifiers['range_max'] = range_content
+        except:  # noqa: E722
+            pass
+    
+    return modifiers
+
+
+def _convert_type_to_sqlmodel(var_type: str) -> str:
+    type_mapping = {
+        'int': 'int',
+        'integer': 'int',
+        'str': 'str', 
+        'string': 'str',
+        'float': 'float',
+        'decimal': 'float',
+        'bool': 'bool',
+        'boolean': 'bool',
+        'date': 'date',
+        'datetime': 'datetime'
+    }
+    
+    return type_mapping.get(var_type.lower(), var_type)
+
+
+def _build_field_parameters(modifiers: dict, var_type: str) -> list:
+    field_params = []
+    
+    if modifiers['default'] is not None:
+        field_params.append(f"default={modifiers['default']}")
+    elif not modifiers['not_null']:
+        field_params.append("default=None")
+    
+    if modifiers['unique']:
+        field_params.append("unique=True")
+    
+    if modifiers['foreign_key']:
+        fk_table = var_type.lower()
+        field_params.append(f'foreign_key="{fk_table}.id"')
+    
+    if modifiers['max_length'] and var_type.lower() in ['str', 'string']:
+        field_params.append(f"max_length={modifiers['max_length']}")
+    
+    # Add range constraints for numeric types
+    if var_type.lower() in ['int', 'integer', 'float', 'decimal']:
+        if modifiers['range_min'] is not None:
+            field_params.append(f"ge={modifiers['range_min']}")
+        if modifiers['range_max'] is not None:
+            field_params.append(f"le={modifiers['range_max']}")
+    
+    return field_params
+
+
+def _is_custom_type(py_type: str) -> bool:
+    built_in_types = {'int', 'str', 'float', 'date', 'datetime', 'bool', 'list', 'dict', 'integer', 'string', 'decimal', 'boolean'}
+    return py_type.lower() not in built_in_types
+
+
 
 
 def parse_py_types_to_sql_type(py_type: str) -> str:
@@ -225,40 +292,40 @@ def generate_getters_routes(entity_name: str) -> str:
         plural = lname + "s"
 
     return f'''from fastapi import Body, APIRouter, HTTPException, Depends
-from app.sqlmodels.{lname} import {entity_name}
-from app.services.{lname}_service import {entity_name}Service
+from app.entities.{lname} import {entity_name}
 from sqlalchemy.orm import Session
-from app.core.database import get_db
+from app.repositories.{lname}_repository import {entity_name}Repository
+from app.utils.core.database import get_db
 
 
 router = APIRouter()
-service = {entity_name}Service()
+repo = {entity_name}Repository()
 
 @router.get("/", response_model=list[{entity_name}])
 def get_all_{plural}(db: Session = Depends(get_db)):
-    return service.list_{plural}(db)
+    return repo.list(db)
 
 @router.get("/{{id}}", response_model={entity_name})
 def get_{lname}_by_id(id: int, db: Session = Depends(get_db)):
-    obj = service.get_{lname}(db, id)
+    obj = repo.get(db, id)
     if not obj:
         raise HTTPException(status_code=404, detail="{entity_name} not found")
     return obj
 
 @router.post("/", response_model={entity_name}, status_code=201)
 def create_{lname}(payload: dict = Body(...), db: Session = Depends(get_db)):
-    return service.create_{lname}(db, payload)
+    return repo.save(db, payload)
 
 @router.patch("/{{id}}", response_model={entity_name})
 def update_{lname}(id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
-    obj = service.update_{lname}(db, id, payload)
+    obj = repo.save(db, id, payload)
     if not obj:
         raise HTTPException(status_code=404, detail="{entity_name} not found")
     return obj
 
 @router.delete("/{{id}}", status_code=204)
 def delete_{lname}(id: int, db: Session = Depends(get_db)):
-    ok = service.delete_{lname}(db, id)
+    ok = repo.delete(db, id)
     if not ok:
         raise HTTPException(status_code=404, detail="{entity_name} not found")
 '''

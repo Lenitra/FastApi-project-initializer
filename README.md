@@ -1,238 +1,244 @@
-# ZERMANI - FastAPI Project Initializer
+# FastAPI Project Initializer
 
-**ZERMANI** = Zones Extensibles, Routage, Modèles, Authentification, Normalisation, Initialisation
+Un générateur automatique de projets FastAPI avec architecture modulaire et système de CRUD complet.
 
-Un générateur de projet FastAPI moderne avec architecture modulaire et système de templates.
+## 🎯 Vue d'ensemble
 
-## 🚀 Fonctionnalités
+Ce générateur crée automatiquement une application FastAPI structurée avec :
+- **Architecture 3-tiers** : Entity, Repository, Service
+- **CRUD automatique** : Génération complète des endpoints REST
+- **Authentification JWT** : Système d'auth avec gestion des rôles
+- **Configuration flexible** : Variables d'environnement centralisées
+- **Types de données avancés** : Support complet des contraintes SQLModel
 
-- **Architecture modulaire** : Séparation claire des couches (models, schemas, services, repositories)
-- **Système de templates** : Templates réutilisables et modifiables
-- **Génération d'entités** : Création automatique de CRUD complet à partir de définitions simples
-- **Authentification JWT** : Système d'auth avec rôles intégré
-- **Configuration flexible** : Variables d'environnement et configuration centralisée
-- **Environnement virtuel** : Setup automatique avec scripts de lancement
+## 🚀 Démarrage rapide
 
-## 📁 Structure du projet généré
+### 1. Configuration des entités
+Éditez le fichier `config/entities.txt` pour définir vos entités :
+
+```txt
+User .r user .w admin .d admin
+- email str .nn .unique
+- name str .nn .len(100)
+- age int .range(0, 120)
+- is_active bool .default(True)
+- created_at datetime
+
+Product .w manager .d admin
+- name str .nn .len(255)
+- price float .nn .range(0, 99999)
+- description str
+- stock int .default(0)
+- category_id int .fk
+```
+
+### 2. Génération du projet
+```bash
+python InitFastAPIProject.py
+```
+
+### 3. Lancement de l'application
+```bash
+cd generated
+setup.bat    # Installation des dépendances
+run.bat      # Démarrage du serveur
+```
+
+L'API sera disponible sur http://127.0.0.1:8000  
+Documentation interactive : http://127.0.0.1:8000/docs
+
+## 📁 Structure générée
 
 ```
 generated/
 ├── app/
 │   ├── main.py                     # Point d'entrée FastAPI
 │   ├── utils/
-│   │   ├── core/
-│   │   │   ├── config.py          # Configuration et settings
-│   │   │   └── database.py        # Configuration SQLAlchemy
-│   │   └── seeds/
-│   │       └── seed_users.py      # Données initiales
-│   ├── routers/                   # Endpoints FastAPI
-│   │   ├── auth.py               # Routes d'authentification
-│   │   └── [entity].py           # Routes générées par entité
-│   ├── schemas/                   # Schémas Pydantic
-│   │   ├── user.py
-│   │   ├── token.py
-│   │   └── [entity].py
-│   ├── sqlmodels/                 # Modèles SQLAlchemy
-│   │   ├── __init__.py
+│   │   └── core/
+│   │       ├── config.py           # Configuration Pydantic
+│   │       └── database.py         # Session SQLAlchemy
+│   ├── entities/                   # Modèles SQLModel
 │   │   ├── user.py
 │   │   └── [entity].py
-│   ├── services/                  # Logique métier
-│   │   ├── authentification/
-│   │   ├── user_service.py
-│   │   └── [entity]_service.py
-│   ├── repositories/              # Couche d'accès aux données
-│   │   ├── base_repository.py
+│   ├── repositories/               # Couche d'accès données
+│   │   ├── base_repository.py      # Repository générique
 │   │   ├── user_repository.py
 │   │   └── [entity]_repository.py
+│   ├── routers/                    # Endpoints REST
+│   │   ├── auth.py                 # Authentification JWT
+│   │   └── [entity].py             # CRUD complet par entité
 │   └── middleware/
-│       └── auth_checker.py        # Middleware d'authentification
-├── venv/                          # Environnement virtuel
-├── .env                          # Variables d'environnement
-├── requirements.txt              # Dépendances
-└── setup.bat / run.bat          # Scripts de lancement
+│       └── auth_checker.py         # Validation des rôles
+├── .env                            # Variables d'environnement
+├── .env.example                    # Template de configuration
+├── requirements.txt                # Dépendances Python
+├── setup.bat                       # Script d'installation
+└── run.bat                         # Script de lancement
 ```
 
-## 🛠️ Installation et Utilisation
-# Format du fichier entities.txt
+## 🔧 Format du fichier entities.txt
 
-Ce document décrit le format du fichier `config/entities.txt` utilisé par le générateur FastAPI pour définir les entités de votre application.
+### Syntaxe des entités
 
-## Structure générale
-
-```
+```txt
 EntityName .r Role .w Role .d Role
-- attribute_name type .modifier1 .modifier2
-- another_attribute type .modifier
-- ...
-
-AnotherEntity
-- ...
+- attribute_name type.modifier1.modifier2
 ```
 
-## Règles de syntaxe
+**Rôles d'autorisation :**
+- `.r role` : Lecture (GET)
+- `.w role` : Écriture (POST, PATCH) 
+- `.d role` : Suppression (DELETE)
 
-### Nom d'entité
-- **Format** : `EntityName .r Role .w Role .d Role` (PascalCase recommandé)
-- **Rôles** :
-    - `.r Role` : Rôle autorisé en lecture
-    - `.w Role` : Rôle autorisé en écriture
-    - `.d Role` : Rôle autorisé en suppression
-    - Si pas de rôle spécifié, endpoint non protégé par l'authentification
-- **Ligne dédiée** : Le nom d'entité (et ses rôles éventuels) doit être seul sur sa ligne
-- **Exemple** :
-    - `TLE .r admin .w admin .d admin`
-    - `User .r user .w manager .d admin`
-    - `Product .w manager .d admin`
+### Types supportés
 
-### Attributs
-- **Format** : `- attribute_name type .modifier1 .modifier2`
-- **Préfixe** : Chaque attribut commence par `- `
-- **Nom** : `snake_case` recommandé
-- **Type** : Type Python standard ou personnalisé
-- **Modifiers** : Optionnels, préfixés par `.`
+| Type | Description |
+|------|-------------|
+| `str`, `string` | Chaîne de caractères |
+| `int`, `integer` | Nombre entier |
+| `float`, `decimal` | Nombre décimal |
+| `bool`, `boolean` | Booléen |
+| `date` | Date |
+| `datetime` | Date et heure |
+| `EntityName` | Relation vers une autre entité |
 
-## Types supportés
+### Modifiers disponibles
 
-### Types de base
-- `str` / `string` → String
-- `int` / `integer` → Integer  
-- `float` / `decimal` → Float
-- `bool` / `boolean` → Boolean
-- `date` → Date
-- `datetime` → DateTime
+| Modifier | Description | Exemple |
+|----------|-------------|---------|
+| `.nn` | Non nullable (obligatoire) | `name str .nn` |
+| `.unique` | Valeur unique | `email str.unique` |
+| `.default(value)` | Valeur par défaut | `active bool .default(True)` |
+| `.len(n)` | Longueur maximale | `name str .len(100)` |
+| `.range(min, max)` | Plage de valeurs | `age int .range(0, 120)` |
+| `.fk` | Clé étrangère | `user_id int .fk` |
 
-### Types personnalisés
-- Nom de classe personnalisée (ex: `Category`, `User`)
-- Génère automatiquement les imports nécessaires
+## 📋 Exemples complets
 
-## Modifiers disponibles
-
-### Contraintes de validation
-
-#### `.nn` - Non Nullable
-Rend le champ obligatoire (non nullable).
-```
-- nom str .nn
-```
-→ `nom: str`
-
-#### `.unique` - Valeur unique
-Ajoute une contrainte d'unicité en base de données.
-```
-- email str .unique
-```
-→ `email: str | None = Field(default=None, unique=True)`
-
-#### `.default(value)` - Valeur par défaut
-Définit une valeur par défaut.
-```
-- active bool .default(True)
-- status str .default("pending")
-```
-→ `active: bool | None = Field(default=True)`
-
-### Contraintes de longueur
-
-#### `.maxlen(n)` - Longueur maximale (strings)
-Limite la longueur d'une chaîne de caractères.
-```
-- nom str .maxlen(24)
-```
-→ `nom: str | None = Field(default=None, max_length=24)`
-
-#### `.len(n)` - Longueur exacte (strings)
-Force une longueur exacte (utilisé pour les chaînes fixes).
-```
-- ligne1 str .len(69)
-```
-→ `ligne1: str | None = Field(default=None, max_length=69)`
-
-### Contraintes de valeur
-
-#### `.range(min..max)` - Plage de valeurs
-Définit une plage de valeurs autorisées (documentation seulement, validation à implémenter).
-```
-- type_element int .range(0..9)
-- excentricite float .range(0..1)
-```
-→ `type_element: int | None = Field(default=None)` + commentaire
-
-### Relations
-
-#### `.fk EntityName` - Clé étrangère
-Crée une relation avec une autre entité.
-```
-- category_id int .fk Category
-```
-→ 
-```python
-category_id: int | None = Field(default=None, foreign_key="category.id")
-category: 'Category' | None = Relationship(back_populates="products")
+### Entité utilisateur
+```txt
+User .r user .w admin .d admin
+- email str .nn .unique
+- username str .nn .len(50)
+- password_hash str .nn
+- age int .range(13, 99)
+- is_active bool .default(True)
+- role str .default("user")
+- created_at datetime
+- updated_at datetime
 ```
 
-## Exemples complets
+### Entité avec relation
+```txt
+Category
+- name str .nn .unique.len(100)
+- description str .len(500)
 
-### Entité simple
-```
-User
-- email str .unique .nn
-- nom str .maxlen(50)
-- age int .range(0..120)
-- active bool .default(True)
+Product .w manager .d admin
+- name str .nn .len(255)
+- description str
+- price float .nn .range(0, 99999.99)
+- stock int .default(0) .range(0, 999999)
+- category_id int .fk
+- is_available bool .default(True)
 - created_at datetime
 ```
 
-### Entité avec relations
-```
-Product
-- name str .maxlen(100) .nn
-- price float .nn
-- description str
-- category_id int .fk Category
-- stock int .default(0)
-- active bool .default(True)
+## 🔨 Génération automatique
 
-Category
-- name str .maxlen(50) .unique .nn
-- description str
-```
+Pour chaque entité, le générateur crée :
 
-## Génération automatique
-
-Pour chaque entité définie, le générateur crée automatiquement :
-
-1. **Entity class** : `app/entities/entity_name.py`
-   ```python
-   class TLE(SQLModel, table=True):
-       __tablename__ = "tle"
-       id: int | None = Field(default=None, primary_key=True)
-       nom: str | None = Field(default=None, max_length=24)
-       # ...
-   ```
-
-2. **Repository class** : `app/repositories/entity_name_repository.py`
-   ```python
-   class TLERepository(BaseRepository[TLE]):
-       def __init__(self):
-           super().__init__(TLE)
-   ```
-
-3. **Router** : `app/routers/entity_name.py`
-   ```python
-   @router.get("/", response_model=list[TLE])
-   def get_all_tles(db: Session = Depends(get_db)):
-       return repo.list(db)
-   # ...
-   ```
-
-
-### 3. Setup du projet généré
-
-```bash
-cd generated
-setup.bat    # Installation des dépendances
-run.bat      # Lancement du serveur
+### 1. Entity (SQLModel)
+```python
+# app/entities/user.py
+class User(SQLModel, table=True):
+    __tablename__ = "user"
+    
+    id: int = Field(default=None, primary_key=True)
+    email: str = Field(unique=True)
+    username: str = Field(max_length=50)
+    age: int = Field(ge=13, le=99)
+    is_active: bool = Field(default=True)
+    created_at: datetime = Field(default=None)
 ```
 
-L'API sera disponible sur http://127.0.0.1:8000
-Documentation interactive : http://127.0.0.1:8000/docs
+### 2. Repository
+```python
+# app/repositories/user_repository.py
+class UserRepository(BaseRepository[User]):
+    def __init__(self):
+        super().__init__(User)
+```
+
+### 3. Router CRUD complet
+```python
+# app/routers/user.py
+@router.get("/", response_model=list[User])
+def get_all_users(db: Session = Depends(get_db)):
+    return repo.list(db)
+
+@router.get("/{id}", response_model=User)
+def get_user_by_id(id: int, db: Session = Depends(get_db)):
+    # ...
+
+@router.post("/", response_model=User, status_code=201)
+def create_user(payload: dict = Body(...), db: Session = Depends(get_db)):
+    # ...
+
+@router.patch("/{id}", response_model=User)
+def update_user(id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
+    # ...
+
+@router.delete("/{id}", status_code=204)
+def delete_user(id: int, db: Session = Depends(get_db)):
+    # ...
+```
+
+## 🔐 Authentification
+
+Le système génère automatiquement :
+- Endpoints de connexion/déconnexion (`/auth/login`, `/auth/logout`)
+- Middleware de validation des rôles
+- Gestion des tokens JWT
+- Protection des endpoints selon les rôles définis
+
+## ⚙️ Configuration
+
+Le fichier `.env` généré contient :
+```env
+# Base de données
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+DB_DATABASE=db_fastapi_project
+
+# Sécurité JWT
+SECRET_KEY=[généré automatiquement]
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Debug
+DEBUG=True
+```
+
+## 🔄 Workflow de développement
+
+1. **Définir** vos entités dans `config/entities.txt`
+2. **Générer** le projet avec `python InitFastAPIProject.py`
+3. **Personnaliser** la configuration dans `generated/.env`
+4. **Installer** les dépendances avec `generated/setup.bat`
+5. **Lancer** l'application avec `generated/run.bat`
+6. **Tester** l'API sur http://127.0.0.1:8000/docs
+
+## 📚 Fonctionnalités avancées
+
+- **BaseRepository** : Méthodes CRUD génériques (list, get, save, delete)
+- **Contraintes de validation** : Types, longueurs, plages de valeurs
+- **Relations automatiques** : Foreign keys et imports d'entités
+- **Environment flexible** : Configuration via `config/add_to_env.txt`
+- **Scripts de déploiement** : Setup et run automatiques
+
+---
+
+**Note** : Ce générateur crée une base solide pour vos projets FastAPI. Les fichiers générés peuvent être modifiés selon vos besoins spécifiques.

@@ -1,17 +1,17 @@
 TLE .r user .w manager .d manager
-- nom str .maxlen(24)
-- norad int .unique
+- nom str .len(24)
+- norad int .unique .range(, 99999) .nn
 - classification str .len(1)
 - designateur_international str
 - epoch datetime
 - mouvement_moyen_deriv1 float
 - mouvement_moyen_deriv2 float
 - bstar float
-- type_element int .range(0..9)
+- type_element int .range(0, 9)
 - numero_ensemble_elements int
 - inclinaison_deg float
 - ascension_droite_noeud_ascendant_deg float
-- excentricite float .range(0..1)
+- excentricite float .range(0,1)
 - argument_perigee_deg float
 - anomalie_moyenne_deg float
 - mouvement_moyen_rev_par_jour float

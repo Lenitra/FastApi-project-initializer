@@ -29,33 +29,36 @@ app = FastAPI(
 # Note: Authentication middleware removed to preserve Swagger documentation
 # Routes are protected individually using Depends(get_current_user)
 
-# Include authentication router manually
-from app.routers.auth import router as auth_router
-
-app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
-
-# Include user and role management routers
-from app.routers.users import router as users_router
-from app.routers.roles import router as roles_router
-
-app.include_router(users_router, prefix="/users", tags=["Users"])
-app.include_router(roles_router, prefix="/roles", tags=["Roles"])
-
-# Auto-discover other routers
+# Auto-discover all routers
 routers_dir = pathlib.Path(__file__).parent / "routers"
+
+# Define special router configurations
+special_routers = {
+    "auth": {"prefix": "/auth", "tags": ["Authentication"]},
+    "users": {"prefix": "/users", "tags": ["Users"]},  
+    "roles": {"prefix": "/roles", "tags": ["Roles"]}
+}
+
 for module_info in pkgutil.iter_modules([str(routers_dir)]):
     name = module_info.name
-    if name.startswith("_") or name in ["auth", "users", "roles"]:
+    if name.startswith("_"):
         continue
 
     try:
         module = importlib.import_module(f"app.routers.{name}")
         router = getattr(module, "router", None)
         if router:
-            prefix = f"/{name}"
-            if not name.endswith("s"):
-                prefix += "s"
-            app.include_router(router, prefix=prefix, tags=[name.capitalize()])
+            # Use special configuration if exists, otherwise use generic
+            if name in special_routers:
+                config = special_routers[name]
+                app.include_router(router, prefix=config["prefix"], tags=config["tags"])
+            else:
+                # Generic configuration for discovered routers
+                prefix = f"/{name}"
+                if not name.endswith("s"):
+                    prefix += "s"
+                tags = [name.replace("_", " ").title()]
+                app.include_router(router, prefix=prefix, tags=tags)
     except ImportError as e:
         print(f"Warning: Could not import router {name}: {e}")
 
