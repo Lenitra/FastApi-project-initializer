@@ -10,7 +10,7 @@ import importlib
 import pathlib
 
 # Import all entities to register them with SQLModel
-from app.entities import user, role
+from app.entities.auth import user, role
 
 # Create database tables (drop and recreate to ensure schema is up to date)
 SQLModel.metadata.drop_all(engine)
@@ -59,13 +59,6 @@ for module_info in pkgutil.iter_modules([str(routers_dir)]):
     except ImportError as e:
         print(f"Warning: Could not import router {name}: {e}")
 
-
-@app.get("/")
-def read_root():
-    return {
-        "message": "FastAPI with Role-Based Authentication",
-        "version": settings.VERSION,
-    }
 
 
 @app.get("/health")
