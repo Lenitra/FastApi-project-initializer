@@ -298,7 +298,7 @@ from app.repositories.{lname}_repository import {entity_name}Repository
 from app.utils.core.database import get_db
 
 
-router = APIRouter()
+router = APIRouter(prefix="/{plural}", tags=["{entity_name}"])
 repo = {entity_name}Repository()
 
 @router.get("/", response_model=list[{entity_name}])

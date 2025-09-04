@@ -53,12 +53,8 @@ for module_info in pkgutil.iter_modules([str(routers_dir)]):
                 config = special_routers[name]
                 app.include_router(router, prefix=config["prefix"], tags=config["tags"])
             else:
-                # Generic configuration for discovered routers
-                prefix = f"/{name}"
-                if not name.endswith("s"):
-                    prefix += "s"
                 tags = [name.replace("_", " ").title()]
-                app.include_router(router, prefix=prefix, tags=tags)
+                app.include_router(router)
     except ImportError as e:
         print(f"Warning: Could not import router {name}: {e}")
 
