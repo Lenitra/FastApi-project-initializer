@@ -1,6 +1,7 @@
-from sqlmodel import Session
-from app.repositories.base_repository import BaseRepository
+from sqlmodel import Session, select
 from app.entities.auth.user import User
+from app.repositories.base_repository import BaseRepository
+from typing import List
 
 
 class UserRepository(BaseRepository[User]):
@@ -8,10 +9,12 @@ class UserRepository(BaseRepository[User]):
         super().__init__(User)
 
     def get_by_email(self, db: Session, email: str) -> User | None:
-        return db.exec(User).filter(User.email == email).first()
+        statement = select(User).where(User.email == email)
+        return db.exec(statement).first()
 
-    def get_active_users(self, db: Session) -> list[User]:
-        return db.exec(User).filter(User.is_active).all()
+    def get_by_role(self, db: Session, role_name: str) -> List[User]:
+        """Get users by role name"""
+        statement = select(User).where(User.roles.__contains__(role_name))
+        return list(db.exec(statement).all())
 
-    def get_by_role(self, db: Session, role: str) -> list[User]:
-        return db.exec(User).filter(User.role == role).all()
+

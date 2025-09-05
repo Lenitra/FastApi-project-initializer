@@ -3,6 +3,7 @@ from sqlmodel import SQLModel
 from app.utils.core.config import settings
 from app.utils.core.database import engine
 from app.utils.seeds.seed_users import seed_users
+from sqlmodel import Session
 # from app.middleware.auth_middleware import AuthMiddleware  # Removed to preserve Swagger docs
 
 import pkgutil
@@ -10,14 +11,15 @@ import importlib
 import pathlib
 
 # Import all entities to register them with SQLModel
-from app.entities.auth import user, role
+from app.entities.auth import user
 
 # Create database tables (drop and recreate to ensure schema is up to date)
 SQLModel.metadata.drop_all(engine)
 SQLModel.metadata.create_all(engine)
 
 # Seed initial data
-seed_users()
+with Session(engine) as session:
+    seed_users(session)
 
 # Create FastAPI app
 app = FastAPI(

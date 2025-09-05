@@ -1,3 +1,4 @@
+from typing import List
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
@@ -38,46 +39,62 @@ def get_current_user(
         )
 
 
+def get_current_user_role(token: str = Depends(oauth2_scheme)):
+    """Get current user role from JWT token directly (no DB query)"""
+    try:
+        payload = decode_access_token(token)
+        role = payload.get("role")
+        if role is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token: no role found",
+            )
+        return role
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+        )
+
+
 def require_role(required_role: str):
-    """Decorator to require specific role"""
-
-    def role_checker(current_user=Depends(get_current_user)):
-        if current_user.role != required_role:
+    """Decorator to require specific role from JWT token"""
+    def role_checker(current_role: str = Depends(get_current_user_role)):
+        if current_role != required_role:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Access forbidden: {required_role} role required",
+                detail=f"Access forbidden: {required_role} role required, got {current_role}",
             )
-        return current_user
+        return current_role
 
     return role_checker
 
 
-def require_roles(required_roles: list[str]):
-    """Decorator to require one of multiple roles"""
-
-    def role_checker(current_user=Depends(get_current_user)):
-        if current_user.role not in required_roles:
+def require_roles(required_roles: List[str]):
+    """Decorator to require one of multiple roles from JWT token"""
+    def role_checker(current_role: str = Depends(get_current_user_role)):
+        if current_role not in required_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Access forbidden: one of {required_roles} roles required",
+                detail=f"Access forbidden: one of {required_roles} roles required, got {current_role}",
             )
-        return current_user
+        return current_role
 
     return role_checker
 
 
-def require_admin(current_user=Depends(get_current_user)):
+def require_admin(current_role: str = Depends(get_current_user_role)):
     """Shortcut for admin role requirement"""
-    if current_user.role != "admin":
+    if current_role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required",
+            detail=f"Admin access required, got {current_role}",
         )
-    return current_user
+    return current_role
 
 
 def require_active_user(current_user=Depends(get_current_user)):
-    """Require user to be active"""
+    """Require user to be active (needs DB query)"""
     if not current_user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

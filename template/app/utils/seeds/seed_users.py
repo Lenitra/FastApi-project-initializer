@@ -1,68 +1,78 @@
 from sqlmodel import Session
-from app.entities.auth.role import Role
 from app.entities.auth.user import User
-from app.utils.core.database import engine
+from app.repositories.auth.user_repository import UserRepository
 from app.utils.auth.auth import get_password_hash
-from datetime import datetime, timezone
+from datetime import datetime
 
 
-def seed_users():
-    """Seed initial roles and users"""
-    with Session(engine) as db:
-        try:
-            # Create default roles
-            roles_data = [
-                {
-                    "name": "admin",
-                    "description": "Full system access",
-                    "permissions": '["*"]',
-                    "is_active": True,
-                    "created_at": datetime.now(timezone.utc),
-                },
-                {
-                    "name": "manager",
-                    "description": "Management access",
-                    "permissions": '["read:*", "write:users", "write:content"]',
-                    "is_active": True,
-                    "created_at": datetime.now(timezone.utc),
-                },
-                {
-                    "name": "user",
-                    "description": "Standard user access",
-                    "permissions": '["read:own", "write:own"]',
-                    "is_active": True,
-                    "created_at": datetime.now(timezone.utc),
-                },
-            ]
+def seed_users(db: Session):
+    """Seed basic roles and admin user with multiple roles"""
+    print("🌱 Starting simple roles and users seeding...")
+    
+    try:
+        user_repo = UserRepository()
 
-            for role_data in roles_data:
-                existing_role = db.query(Role).filter_by(name=role_data["name"]).first()
-                if not existing_role:
-                    role = Role(**role_data)
-                    db.add(role)
-                    print(f"Rôle créé : {role_data['name']}")
-                else:
-                    print(f"Rôle existant : {role_data['name']}")
+        # Create admin user if doesn't exist
+        admin_email = "admin@example.com"
+        existing_admin = user_repo.get_by_email(db, admin_email)
+        if existing_admin:
+            print(f"📝 Admin user already exists: {admin_email}")
+            return
 
-            # Create admin user
-            admin_email = "admin@admin.com"
-            existing_user = db.query(User).filter_by(email=admin_email).first()
-            if not existing_user:
-                admin_user = User(
-                    email=admin_email,
-                    hashed_password=get_password_hash("admin"),
-                    role="admin",
-                    is_active=True,
-                    created_at=datetime.now(timezone.utc),
-                )
-                db.add(admin_user)
-                print(f"Utilisateur admin créé : {admin_email}")
-            else:
-                print(f"Utilisateur admin existant : {admin_email}")
+        admin_data = {
+            "email": admin_email,
+            "hashed_password": get_password_hash("admin123"),
+            "roles": "user,manager,admin",  # Admin has all roles
+            "active_role": "admin",  # Default active role
+            "is_active": True,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        }
 
-            db.commit()
+        admin_user = user_repo.save(db, admin_data)
+        print(f"✅ Created admin user: {admin_email} with roles: {admin_user.get_roles()}")
 
-        except Exception as e:
-            db.rollback()
-            print(f"Erreur lors du seeding : {e}")
-            raise
+        # Create manager user
+        manager_email = "manager@example.com"
+        existing_manager = user_repo.get_by_email(db, manager_email)
+        
+        if not existing_manager:
+            manager_data = {
+                "email": manager_email,
+                "hashed_password": get_password_hash("manager123"),
+                "roles": "user,manager",  # Manager has user and manager roles
+                "active_role": "manager",
+                "is_active": True,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+            }
+            manager_user = user_repo.save(db, manager_data)
+            print(f"✅ Created manager user: {manager_email} with roles: {manager_user.get_roles()}")
+        else:
+            print(f"📝 Manager user already exists: {manager_email}")
+
+        # Create regular user
+        user_email = "user@example.com"
+        existing_user = user_repo.get_by_email(db, user_email)
+        
+        if not existing_user:
+            user_data = {
+                "email": user_email,
+                "hashed_password": get_password_hash("user123"),
+                "roles": "user",  # Only user role
+                "active_role": "user",
+                "is_active": True,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+            }
+            regular_user = user_repo.save(db, user_data)
+            print(f"✅ Created regular user: {user_email} with roles: {regular_user.get_roles()}")
+        else:
+            print(f"📝 Regular user already exists: {user_email}")
+
+        print("🎉 Users seeding completed!")
+        
+    except Exception as e:
+        print(f"❌ Error during seeding: {str(e)}")
+        db.rollback()
+        raise

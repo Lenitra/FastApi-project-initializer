@@ -28,7 +28,13 @@ async def login(
         )
 
     access_token = create_access_token(
-        data={"sub": user.email, "role": user.role, "user_id": user.id},
+        user_id=user.id,
+        email=user.email,
+        role=user.active_role,
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
-    return {"access_token": access_token, "token_type": "bearer", "role": user.role}
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer", 
+        "active_role": user.active_role,
+    }

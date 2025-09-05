@@ -4,17 +4,19 @@ from app.entities.auth.user import User
 from app.repositories.auth.user_repository import UserRepository
 from app.utils.core.database import get_db
 from app.utils.auth.roles import require_admin, require_roles, get_current_user
+from typing import List
 
 router = APIRouter()
 repo = UserRepository()
 
 
-@router.get("/", response_model=list[User])
+@router.get("/", response_model=List[User])
 def get_all_users(
-    db: Session = Depends(get_db), current_user: User = Depends(require_admin)
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(require_admin)
 ):
     """Get all users - Admin only"""
-    return repo.list(db)
+    return repo.get_all(db)
 
 
 @router.get("/me", response_model=User)
@@ -23,14 +25,23 @@ def get_current_user_profile(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-@router.get("/by-role/{role}", response_model=list[User])
+@router.get("/me/roles")
+def get_current_user_roles(current_user: User = Depends(get_current_user)):
+    """Get current user roles"""
+    return {
+        "active_role": current_user.active_role,
+        "all_roles": current_user.get_roles()
+    }
+
+
+@router.get("/by-role/{role_name}", response_model=List[User])
 def get_users_by_role(
-    role: str,
+    role_name: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    """Get users by role - Admin only"""
-    return repo.get_by_role(db, role)
+    """Get users by role name - Admin only"""
+    return repo.get_by_role(db, role_name)
 
 
 @router.get("/{id}", response_model=User)
@@ -40,27 +51,47 @@ def get_user_by_id(
     current_user: User = Depends(require_roles(["admin", "manager"])),
 ):
     """Get user by ID - Admin/Manager only"""
-    obj = repo.get(db, id)
-    if not obj:
+    user = repo.get_by_id(db, id)
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return obj
+    return user
 
 
 @router.post("/", response_model=User, status_code=201)
-def save_user(
+def create_user(
     user_data: dict = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    """Create or update user - Admin only"""
-    return repo.save(db, user_data)
+    """Create user - Admin only"""
+    return repo.create(db, user_data)
 
 
-@router.delete("/{id}", status_code=204)
+@router.put("/{id}", response_model=User)
+def update_user(
+    id: int,
+    user_data: dict = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Update user - Admin only"""
+    user = repo.get_by_id(db, id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return repo.update(db, id, user_data)
+
+
+@router.delete("/{id}")
 def delete_user(
-    id: int, db: Session = Depends(get_db), current_user: User = Depends(require_admin)
+    id: int, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(require_admin)
 ):
     """Delete user - Admin only"""
-    ok = repo.delete(db, id)
-    if not ok:
+    user = repo.get_by_id(db, id)
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    repo.delete(db, id)
+    return {"message": "User deleted successfully"}
