@@ -242,4 +242,13 @@ DEBUG=True
 
 ---
 
+## ToDo List :
+
+- Retravaille l'auth pour utiliser "depends" pour que la doc swagger match
+- Pour la découverte des routes ne pas redefinir un prefix
+- Définir le préfix des routes dans les fichiers des routes-entitées
+- Roles plus robustes
+- Parsing des roles dans le entities.txt
+
+
 **Note** : Ce générateur crée une base solide pour vos projets FastAPI. Les fichiers générés peuvent être modifiés selon vos besoins spécifiques.
