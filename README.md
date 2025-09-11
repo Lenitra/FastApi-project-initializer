@@ -249,6 +249,7 @@ DEBUG=True
 - Définir le préfix des routes dans les fichiers des routes-entitées
 - Roles plus robustes
 - Parsing des roles dans le entities.txt
+- Usage de UV
 
 
 **Note** : Ce générateur crée une base solide pour vos projets FastAPI. Les fichiers générés peuvent être modifiés selon vos besoins spécifiques.
