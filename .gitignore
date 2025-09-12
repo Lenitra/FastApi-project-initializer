@@ -1,3 +1,4 @@
 project_fastapi/
 __pycache__/
 generated/*
+.claude/
