@@ -1,6 +1,18 @@
 @echo off
 setlocal
 
+
+@REM Installer UV et uvicorn s'ils ne sont pas installés
+where uv >nul 2>nul
+if %errorlevel%==0 (
+    echo [setup] Installation de uv...
+    uv install uvicorn
+) else (
+    echo [setup] Installation de uv via pip...
+    python -m pip install --upgrade pip
+    pip install uvicorn
+)
+
 REM === Créer le venv s'il n'existe pas ===
 if not exist "venv\Scripts\activate.bat" (
     where uv >nul 2>nul

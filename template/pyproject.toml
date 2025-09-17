@@ -1,0 +1,20 @@
+[project]
+name = "template"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.116.1",
+    "httpx>=0.28.1",
+    "passlib[argon2]>=1.7.4",
+    "psycopg2>=2.9.10",
+    "pydantic-settings>=2.10.1",
+    "pytest>=8.4.2",
+    "python-dotenv>=1.1.1",
+    "python-jose[cryptography]>=3.5.0",
+    "python-multipart>=0.0.20",
+    "sqlmodel>=0.0.24",
+    "uv>=0.8.17",
+    "uvicorn[standard]>=0.35.0",
+]
