@@ -5,7 +5,7 @@ import shutil
 from utils import get_entities
 
 
-def create_env_config(project_path="/generated"):
+def create_env_config(project_path="generated"):
     # region utils/core/config.py
     file_content = """from pydantic_settings import BaseSettings
 from typing import Optional
