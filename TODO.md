@@ -18,4 +18,3 @@
 - Ajouter la gestion des logs et de la configuration logging
 - Générer un README.md plus complet (exemples d'utilisation, endpoints, etc.)
 - Ajouter la gestion des variables d'environnement optionnelles/obligatoires
- 

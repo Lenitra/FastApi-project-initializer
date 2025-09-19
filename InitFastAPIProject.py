@@ -8,7 +8,6 @@ from utils import get_entities
 def create_env_config(project_path="generated"):
     # region utils/core/config.py
     file_content = """from pydantic_settings import BaseSettings
-from typing import Optional
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "FastAPI Project"
@@ -77,7 +76,12 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 
     with open(project_path + "/.env", "w", encoding="utf-8") as f:
         f.write(file_content)
-    with open(project_path + "/.env.example", "w", encoding="utf-8") as f:
+    
+    with open(project_path + "/envs/dev.txt", "w", encoding="utf-8") as f:
+        f.write(file_content)
+
+    # TODO: Modifier les variables pour la prod
+    with open(project_path + "/envs/docker.txt", "w", encoding="utf-8") as f:
         f.write(file_content)
 
     # endregion
@@ -331,17 +335,6 @@ def delete_{lname}(id: int, db: Session = Depends(get_db)):
 '''
 
 
-def copy_entities_txt(project_path):
-    local_entities_txt = "config/entities.txt"
-    dist_entities_txt = os.path.join(project_path, "entities.txt")
-
-    with open(local_entities_txt, "r") as f:
-        content = f.read()
-
-    with open(dist_entities_txt, "w") as f:
-        f.write(content)
-
-
 def copy_base_template(project_path):
     local_base_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "template")
@@ -367,7 +360,6 @@ def init_fastapi_project():
     copy_base_template(project_path)
     create_env_config(project_path)
     create_custom_entities(project_path)
-    copy_entities_txt(project_path)
 
     print("✅ Projet FastAPI initialisé avec succès !")
 
