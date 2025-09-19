@@ -320,7 +320,7 @@ def get_{lname}_by_id(id: int, db: Session = Depends(get_db)):
 def create_{lname}(payload: dict = Body(...), db: Session = Depends(get_db)):
     return repo.save(db, payload)
 
-@router.patch("/{{id}}", response_model={entity_name})
+@router.put("/{{id}}", response_model={entity_name})
 def update_{lname}(id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
     obj = repo.save(db, id, payload)
     if not obj:
