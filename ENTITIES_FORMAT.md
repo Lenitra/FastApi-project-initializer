@@ -105,7 +105,7 @@ Définit une plage de valeurs autorisées (documentation seulement, validation �
 ### Relations
 
 #### `.fk EntityName` - Clé étrangère
-Crée une relation avec une autre entité.
+Crée une relation avec une autre **entité**. Ca pointera vers l'attribut `id` de l'entité cible.
 ```
 - category_id int .fk Category
 ```
