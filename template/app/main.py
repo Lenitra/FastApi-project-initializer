@@ -3,6 +3,7 @@ from sqlmodel import SQLModel
 from app.utils.core.config import settings
 from app.utils.core.database import engine
 from app.utils.seeds.seed_users import seed_users
+from app.utils.seeds.seed_roles import seed_roles
 from sqlmodel import Session
 # from app.middleware.auth_middleware import AuthMiddleware  # Removed to preserve Swagger docs
 
@@ -19,6 +20,7 @@ SQLModel.metadata.create_all(engine)
 
 # Seed initial data
 with Session(engine) as session:
+    seed_roles(session)
     seed_users(session)
 
 # Create FastAPI app

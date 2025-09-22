@@ -15,8 +15,8 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def create_access_token(user_id: str, email: str, role: str, expires_delta: Optional[timedelta] = None) -> str:
-    to_encode = {"sub": user_id, "role": role, "email": email}
+def create_access_token(user_id: str, email: str, active_role: str, expires_delta: Optional[timedelta] = None) -> str:
+    to_encode = {"sub": user_id, "active_role": active_role, "email": email}
     expire = datetime.utcnow() + (
         expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
@@ -27,8 +27,8 @@ def create_access_token(user_id: str, email: str, role: str, expires_delta: Opti
 def decode_access_token(token: str) -> dict:
     payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     email = payload.get("sub")
-    role = payload.get("role", "user")
+    active_role = payload.get("active_role", "user")
     user_id = payload.get("user_id")
     if email is None:
         raise JWTError("Missing subject")
-    return {"email": email, "role": role, "user_id": user_id}
+    return {"email": email, "active_role": active_role, "user_id": user_id}

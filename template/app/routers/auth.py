@@ -30,7 +30,7 @@ async def login(
     access_token = create_access_token(
         user_id=user.id,
         email=user.email,
-        role=user.active_role,
+        active_role=user.active_role,
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     return {

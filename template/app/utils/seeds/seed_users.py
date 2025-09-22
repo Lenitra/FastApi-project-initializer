@@ -22,8 +22,8 @@ def seed_users(db: Session):
         admin_data = {
             "email": admin_email,
             "hashed_password": get_password_hash("admin123"),
-            "roles": "user,manager,admin",  # Admin has all roles
-            "active_role": "admin",  # Default active role
+            "roles": [1],  
+            "active_role": 1,  
             "is_active": True,
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),

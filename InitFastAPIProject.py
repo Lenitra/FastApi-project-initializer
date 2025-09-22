@@ -266,8 +266,6 @@ def _is_custom_type(py_type: str) -> bool:
     return py_type.lower() not in built_in_types
 
 
-
-
 def parse_py_types_to_sql_type(py_type: str) -> str:
     if py_type.lower() in ["int", "integer"]:
         return "Integer"
@@ -344,6 +342,14 @@ def copy_base_template(project_path):
     shutil.copytree(local_base_path, dist_base_path)
 
 
+
+def create_roles(project_path):
+    with open("config/roles.txt", "r", encoding="utf-8") as f:
+        roles = [line.strip() for line in f if line.strip() and not line.startswith("---")]
+    for role in roles:
+        print("Role to create:", role)
+
+
 def init_fastapi_project():
     project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "generated"))
 
@@ -360,6 +366,7 @@ def init_fastapi_project():
     copy_base_template(project_path)
     create_env_config(project_path)
     create_custom_entities(project_path)
+    create_roles(project_path)
 
     print("✅ Projet FastAPI initialisé avec succès !")
 

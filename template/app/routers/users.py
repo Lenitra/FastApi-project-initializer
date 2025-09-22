@@ -25,25 +25,6 @@ def get_current_user_profile(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-@router.get("/me/roles")
-def get_current_user_roles(current_user: User = Depends(get_current_user)):
-    """Get current user roles"""
-    return {
-        "active_role": current_user.active_role,
-        "all_roles": current_user.get_roles()
-    }
-
-
-@router.get("/by-role/{role_name}", response_model=List[User])
-def get_users_by_role(
-    role_name: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin),
-):
-    """Get users by role name - Admin only"""
-    return repo.get_by_role(db, role_name)
-
-
 @router.get("/{id}", response_model=User)
 def get_user_by_id(
     id: int,
@@ -57,41 +38,41 @@ def get_user_by_id(
     return user
 
 
-@router.post("/", response_model=User, status_code=201)
-def create_user(
-    user_data: dict = Body(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin),
-):
-    """Create user - Admin only"""
-    return repo.create(db, user_data)
+# @router.post("/", response_model=User, status_code=201)
+# def create_user(
+#     user_data: dict = Body(...),
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(require_admin),
+# ):
+#     """Create user - Admin only"""
+#     return repo.create(db, user_data)
 
 
-@router.put("/{id}", response_model=User)
-def update_user(
-    id: int,
-    user_data: dict = Body(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin),
-):
-    """Update user - Admin only"""
-    user = repo.get_by_id(db, id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+# @router.put("/{id}", response_model=User)
+# def update_user(
+#     id: int,
+#     user_data: dict = Body(...),
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(require_admin),
+# ):
+#     """Update user - Admin only"""
+#     user = repo.get_by_id(db, id)
+#     if not user:
+#         raise HTTPException(status_code=404, detail="User not found")
     
-    return repo.update(db, id, user_data)
+#     return repo.update(db, id, user_data)
 
 
-@router.delete("/{id}")
-def delete_user(
-    id: int, 
-    db: Session = Depends(get_db), 
-    current_user: User = Depends(require_admin)
-):
-    """Delete user - Admin only"""
-    user = repo.get_by_id(db, id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+# @router.delete("/{id}")
+# def delete_user(
+#     id: int, 
+#     db: Session = Depends(get_db), 
+#     current_user: User = Depends(require_admin)
+# ):
+#     """Delete user - Admin only"""
+#     user = repo.get_by_id(db, id)
+#     if not user:
+#         raise HTTPException(status_code=404, detail="User not found")
     
-    repo.delete(db, id)
-    return {"message": "User deleted successfully"}
+#     repo.delete(db, id)
+#     return {"message": "User deleted successfully"}
