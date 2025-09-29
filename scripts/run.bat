@@ -1,6 +1,6 @@
 @echo off
 @REM Se placer dans le répertoire du script
-cd /d "%~dp0"
+cd /d "%~dp0/.."
 
 
 @REM Supprimer le dossier /generated s'il existe déjà avec droits admin et récursivité forcée
