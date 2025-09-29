@@ -1,7 +1,6 @@
 from sqlmodel import SQLModel, Field
 from datetime import datetime
-from typing import List, Optional
-import json
+from typing import Optional
 
 
 class Role(SQLModel, table=True):
@@ -13,5 +12,5 @@ class Role(SQLModel, table=True):
     name: str = Field(unique=True, index=True)
     description: Optional[str] = Field(default=None)
     is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = Field(default=datetime.utcnow)
+    created_at: datetime = Field(default=datetime.utcnow)

@@ -117,17 +117,6 @@ category: 'Category' | None = Relationship(back_populates="products")
 
 ## Exemples complets
 
-### Entité simple
-```
-User
-- email str .unique .nn
-- nom str .maxlen(50)
-- age int .range(0..120)
-- active bool .default(True)
-- created_at datetime
-```
-
-### Entité avec relations
 ```
 Product
 - name str .maxlen(100) .nn

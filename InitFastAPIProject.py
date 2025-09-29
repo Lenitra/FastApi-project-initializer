@@ -344,11 +344,46 @@ def copy_base_template(project_path):
 
 
 def create_roles(project_path):
+    seed_role_py = """
+from sqlmodel import Session
+from app.utils.auth.auth import get_password_hash
+from datetime import datetime
+from app.repositories.auth.role_repository import RoleRepository
+from app.entities.auth.role import Role
+
+
+def seed_roles(db: Session):
+    print("🌱 Starting simple roles and users seeding...")
+    
+    try:
+        role_repo = RoleRepository()
+        if role_repo.count(db) > 0:
+            print("⚠️ Roles already seeded, skipping.")
+            return
+
+"""
     with open("config/roles.txt", "r", encoding="utf-8") as f:
         roles = [line.strip() for line in f if line.strip() and not line.startswith("---")]
     for role in roles:
         print("Role to create:", role)
+        if ":" in role:
+            role_name = role.split(":")[0].strip()
+            role_description = role.split(":")[1].strip()
+        else:
+            role_name = role
+            role_description = f"{role_name}"
 
+        seed_role_py += f'        new_role = Role(name="{role_name}", description="{role_description}", created_at=datetime.utcnow(), updated_at=datetime.utcnow())\n'
+        seed_role_py += f'        role_repo.save(db, new_role)\n'
+
+
+    seed_role_py += """
+    except Exception as e:
+        print(f"❌ Error during roles seeding: {e}")
+        return
+        """
+    with open(project_path + "/app/utils/seeds/seed_roles.py", "w", encoding="utf-8") as f:
+        f.write(seed_role_py)
 
 def init_fastapi_project():
     project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "generated"))

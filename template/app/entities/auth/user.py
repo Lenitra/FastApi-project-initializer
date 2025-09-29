@@ -1,4 +1,4 @@
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Column
 from datetime import datetime
 from typing import List
 from sqlalchemy import JSON
@@ -12,7 +12,7 @@ class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     email: str = Field(unique=True, index=True)
     hashed_password: str
-    roles_ids: List[int] = Field(default=[1], sa_column=JSON)  # List of role IDs
+    roles_ids: List[int] = Field(default=[1], sa_column=Column(JSON))  # List of role IDs
     active_role: int = Field(default=1)  # Current active role ID
     is_active: bool = Field(default=True)
     created_at: datetime | None = Field(default=None)

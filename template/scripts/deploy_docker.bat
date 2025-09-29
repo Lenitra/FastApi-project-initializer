@@ -110,12 +110,5 @@ echo.
 echo Application accessible sur: http://localhost:8055
 echo.
 
-REM Demander si l'utilisateur veut voir les logs
-set /p show_logs="Voulez-vous voir les logs en temps réel? (o/N): "
-if /i "%show_logs%"=="o" (
-    echo.
-    echo Affichage des logs (Ctrl+C pour quitter):
-    docker-compose logs -f
-)
 
 pause
