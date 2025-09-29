@@ -4,18 +4,25 @@ on:
   push:
     branches: ["**"]   # toutes les branches
     tags: ["*"]        # tous les tags
-  workflow_dispatch:   # permet de déclencher manuellement si besoin
+  workflow_dispatch:   # déclenchement manuel si besoin
 
 jobs:
   mirror:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # nécessaire pour récupérer tout l'historique + tags
+          fetch-depth: 0   # récupérer tout l'historique + tags
+
+      - name: Configure Git (safe directory)
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Push all refs to GitLab
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
         run: |
-          git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@${{ secrets.GITLAB_URL }}
+          git remote add gitlab https://oauth2:${GITLAB_TOKEN}@gitlab.com/cde-esos/fastapi-project-initializer.git
           git push --mirror gitlab
