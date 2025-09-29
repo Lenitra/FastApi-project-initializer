@@ -1,0 +1,21 @@
+name: Mirror to GitLab
+
+on:
+  push:
+    branches: ["**"]   # toutes les branches
+    tags: ["*"]        # tous les tags
+  workflow_dispatch:   # permet de déclencher manuellement si besoin
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # nécessaire pour récupérer tout l'historique + tags
+
+      - name: Push all refs to GitLab
+        run: |
+          git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@{{ secrets.GITLAB_URL }}
+          git push --mirror gitlab
