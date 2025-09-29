@@ -14,15 +14,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # récupérer tout l'historique + tags
+          fetch-depth: 0     # récupère tout l'historique
+          fetch-tags: true   # récupère aussi les tags
 
       - name: Configure Git (safe directory)
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: Push all refs to GitLab
+      - name: Push branches and tags to GitLab (no remote-tracking refs)
         env:
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
         run: |
           git remote add gitlab https://oauth2:${GITLAB_TOKEN}@gitlab.com/cde-esos/fastapi-project-initializer.git
-          git push --mirror gitlab
+          # Pousse uniquement les branches et les tags, et supprime les refs distantes qui n'existent plus
+          git push --prune gitlab +refs/heads/*:refs/heads/* +refs/tags/*:refs/tags/*
