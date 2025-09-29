@@ -228,9 +228,8 @@ DEBUG=True
 2. **Définir** vos variables d'environnement supplémentaires `config/add_to_env.txt`
 3. **Générer** le projet avec `python InitFastAPIProject.py`
 4. **Personnaliser** la configuration dans `generated/.env`
-5. **Installer** les dépendances avec `generated/setup.bat`
-6. **Lancer** l'application avec `generated/run.bat`
-7. **Tester** l'API sur http://127.0.0.1:8000/docs
+5. **Lancer en local** les dépendances avec `generated/script/setup.bat` puis executer `generated/script/run.bat`
+5. (bis) **Lancer via docker** l'application avec `generated/script/deploy_docker.bat`
 
 ## 📚 Fonctionnalités avancées
 
