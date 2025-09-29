@@ -229,7 +229,7 @@ DEBUG=True
 3. **Générer** le projet avec `python InitFastAPIProject.py`
 4. **Personnaliser** la configuration dans `generated/.env`
 5. **Lancer en local** les dépendances avec `generated/script/setup.bat` puis executer `generated/script/run.bat`
-5. (bis) **Lancer via docker** l'application avec `generated/script/deploy_docker.bat`
+6. **Déployer sur docker** l'application avec `generated/script/deploy_docker.bat`
 
 ## 📚 Fonctionnalités avancées
 
