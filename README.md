@@ -176,23 +176,23 @@ class UserRepository(BaseRepository[User]):
 ```python
 # app/routers/user.py
 @router.get("/", response_model=list[User])
-def get_all_users(db: Session = Depends(get_db)):
+def get_all_users(db: Session = Depends(get_db), role = Depends(require_role(["any"]))):
     return repo.list(db)
 
 @router.get("/{id}", response_model=User)
-def get_user_by_id(id: int, db: Session = Depends(get_db)):
+def get_user_by_id(id: int, db: Session = Depends(get_db), role = Depends(require_role(["any"]))):
     # ...
 
 @router.post("/", response_model=User, status_code=201)
-def create_user(payload: dict = Body(...), db: Session = Depends(get_db)):
+def create_user(payload: dict = Body(...), db: Session = Depends(get_db), role = Depends(require_role(["user", "admin"]))):
     # ...
 
 @router.patch("/{id}", response_model=User)
-def update_user(id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
+def update_user(id: int, payload: dict = Body(...), db: Session = Depends(get_db), role = Depends(require_role(["user", "admin"]))):
     # ...
 
 @router.delete("/{id}", status_code=204)
-def delete_user(id: int, db: Session = Depends(get_db)):
+def delete_user(id: int, db: Session = Depends(get_db), role = Depends(require_role(["admin", "manager"]))):
     # ...
 ```
 
