@@ -245,5 +245,5 @@ DEBUG=True
 
 ## ToDo List :
 
-- Parsing des roles dans le entities.txt
 - Support des attributs de type List, Dict, Set
+- Création dynamique d'utilisateurs initiaux via un fichier de config
