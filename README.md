@@ -199,8 +199,7 @@ def delete_user(id: int, db: Session = Depends(get_db)):
 ## 🔐 Authentification
 
 Le système génère automatiquement :
-- Endpoints de connexion/déconnexion (`/auth/login`, `/auth/logout`)
-- Middleware de validation des rôles
+- Endpoints de connexion/déconnexion : `/auth/login`
 - Gestion des tokens JWT
 - Protection des endpoints selon les rôles définis
 
