@@ -7,7 +7,7 @@ from app.utils.core.config import settings
 from app.utils.core.database import get_db
 from app.repositories.auth.user_repository import UserRepository
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 user_repo = UserRepository()
 
 
@@ -29,9 +29,7 @@ async def login(
 
     access_token = create_access_token(
         user_id=user.id,
-        email=user.email,
-        active_role=user.active_role,
-        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+        active_role=user.active_role
     )
     return {
         "access_token": access_token, 

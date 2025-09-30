@@ -13,21 +13,32 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 def get_current_user(
     token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
-):
+) -> User:
     """
-    Récupère l'utilisateur actuel à partir du sub (mail) du token JWT.
+    Récupère l'utilisateur actuel à partir du sub (user_id) du token JWT.
     """
     try:
         payload = decode_access_token(token)
-        email = payload.get("email")
-        if email is None:
+        user_id = payload.get("sub")
+        if user_id is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication credentials",
             )
 
         user_repo = UserRepository()
-        user = user_repo.get_by_email(db, email)
+        print(f"Recherche utilisateur avec ID: {user_id}")  # Debug
+        user = user_repo.get_by_id(db, int(user_id))
+        print(f"Utilisateur trouvé: {user}")  # Debug
+        if user is None:
+            print(f"Aucun utilisateur trouvé pour l'ID: {user_id}")  # Debug
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+            )
+
+        print(f"Retour de l'utilisateur: {user.email}")  # Debug
+        return user
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

@@ -1,3 +1,5 @@
+import random
+import base64
 import os
 import time
 import shutil
@@ -49,9 +51,9 @@ settings = Settings()
     # endregion
 
     # region .env
-    import random
-
-    secret_key = random.SystemRandom().getrandbits(256)
+    secret_key_bytes = random.SystemRandom().getrandbits(256).to_bytes(32, 'big')
+    secret_key = base64.urlsafe_b64encode(secret_key_bytes).decode('utf-8').rstrip('=')
+    secret_key = ''.join(filter(str.isalnum, secret_key))
     file_content = """# Variables d'environnement - remplir selon besoin
 DEBUG=True
 
@@ -309,7 +311,7 @@ def get_all_{plural}(db: Session = Depends(get_db)):
 
 @router.get("/{{id}}", response_model={entity_name})
 def get_{lname}_by_id(id: int, db: Session = Depends(get_db)):
-    obj = repo.get(db, id)
+    obj = repo.get_by_id(db, id)
     if not obj:
         raise HTTPException(status_code=404, detail="{entity_name} not found")
     return obj

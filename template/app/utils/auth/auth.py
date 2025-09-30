@@ -15,20 +15,23 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def create_access_token(user_id: str, email: str, active_role: str, expires_delta: Optional[timedelta] = None) -> str:
-    to_encode = {"sub": user_id, "active_role": active_role, "email": email}
+def create_access_token(user_id: int, active_role: int) -> str:
+    to_encode = {"sub": str(user_id), "active_role": str(active_role)}
     expire = datetime.utcnow() + (
-        expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
 def decode_access_token(token: str) -> dict:
+    print(f"Decoding token: {token}")
     payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-    email = payload.get("sub")
-    active_role = payload.get("active_role", "user")
-    user_id = payload.get("user_id")
-    if email is None:
-        raise JWTError("Missing subject")
-    return {"email": email, "active_role": active_role, "user_id": user_id}
+    user_id = payload.get("sub")
+    active_role = payload.get("active_role")
+    if user_id is None or active_role is None:
+        print(f"Decoded payload missing user_id or active_role: {payload}")
+        raise JWTError("Missing user_id or active_role in token")
+
+    print(f"Decoded token for user_id: {user_id}, active_role: {active_role}")
+    return {"active_role": active_role, "sub": user_id}

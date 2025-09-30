@@ -36,12 +36,7 @@ app = FastAPI(
 # Auto-discover all routers
 routers_dir = pathlib.Path(__file__).parent / "routers"
 
-# Define special router configurations
-special_routers = {
-    "auth": {"prefix": "/auth", "tags": ["Authentication"]},
-    "users": {"prefix": "/users", "tags": ["Users"]},  
-    "roles": {"prefix": "/roles", "tags": ["Roles"]}
-}
+
 
 for module_info in pkgutil.iter_modules([str(routers_dir)]):
     name = module_info.name
@@ -52,15 +47,26 @@ for module_info in pkgutil.iter_modules([str(routers_dir)]):
         module = importlib.import_module(f"app.routers.{name}")
         router = getattr(module, "router", None)
         if router:
-            # Use special configuration if exists, otherwise use generic
-            if name in special_routers:
-                config = special_routers[name]
-                app.include_router(router, prefix=config["prefix"], tags=config["tags"])
-            else:
-                tags = [name.replace("_", " ").title()]
-                app.include_router(router)
+            app.include_router(router)
     except ImportError as e:
-        print(f"Warning: Could not import router {name}: {e}")
+        print(f"❌ Warning: Could not import router {name}: {e}")
+        print(f"❌ Warning: Could not import router {name}: {e}")
+        print(f"❌ Warning: Could not import router {name}: {e}")
+        print(f"❌ Warning: Could not import router {name}: {e}")
+        print(f"❌ Warning: Could not import router {name}: {e}")
+        print(f"❌ Warning: Could not import router {name}: {e}")
+        print(f"❌ Warning: Could not import router {name}: {e}")
+        print(f"❌ Warning: Could not import router {name}: {e}")
+        print(f"❌ Warning: Could not import router {name}: {e}")
+        print(f"❌ Warning: Could not import router {name}: {e}")
+        print(f"❌ Warning: Could not import router {name}: {e}")
+        print(f"❌ Warning: Could not import router {name}: {e}")
+        print(f"❌ Warning: Could not import router {name}: {e}")
+        print(f"❌ Warning: Could not import router {name}: {e}")
+        print(f"❌ Warning: Could not import router {name}: {e}")
+        print(f"❌ Warning: Could not import router {name}: {e}")
+        print(f"❌ Warning: Could not import router {name}: {e}")
+
 
 
 

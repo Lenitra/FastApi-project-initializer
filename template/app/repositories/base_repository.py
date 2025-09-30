@@ -10,6 +10,9 @@ class BaseRepository(Generic[T]):
 
     def get(self, db: Session, id: int) -> T | None:
         return db.get(self.model, id)
+    
+    def get_by_id(self, db: Session, id: int) -> T | None:
+        return db.get(self.model, id)
 
     def list(self, db: Session, offset: int = 0, limit: int = 100) -> list[T]:
         return db.exec(select(self.model).offset(offset).limit(limit)).all()
@@ -63,7 +66,7 @@ class BaseRepository(Generic[T]):
         return new_obj
 
     def delete(self, db: Session, id: int) -> bool:
-        obj = self.get(db, id)
+        obj = self.get_by_id(db, id)
         if not obj:
             return False
         db.delete(obj)

@@ -65,4 +65,21 @@ if exist "generated" (
 )
 echo Lancement de l'initialisation du projet FastAPI...
 python InitFastAPIProject.py
-pause
+
+@REM Demander à l'utilisateur s'il veut exécuter le script de déploiement Docker
+echo.
+echo Initialisation terminee.
+set /p deploy="Voulez-vous executer le script de deploiement Docker? (o/n): "
+if /i "%deploy%"=="o" (
+    if exist "generated\scripts\deploy_docker.bat" (
+        echo Execution du script de deploiement Docker...
+        call "generated\scripts\deploy_docker.bat"
+    ) else (
+        echo ERREUR: Le fichier generated\scripts\deploy_docker.bat n'existe pas.
+        echo Veuillez verifier que l'initialisation s'est correctement deroulee.
+        pause
+    )
+) else (
+    echo Script de deploiement Docker ignore.
+)
+
