@@ -1,4 +1,4 @@
-TLE .r user .w manager .d manager
+TLE .r any .w Operator,Admin 
 - nom str .len(24)
 - norad int .unique .range(, 99999) .nn
 - classification str .len(1)

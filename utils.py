@@ -37,3 +37,41 @@ def get_entities():
 
 
 # endregion
+
+
+def get_acces_for_entities(entity: str) -> tuple[list[str], list[str], list[str]]:
+    """
+    Extrait les rôles d'accès en lecture, écriture et suppression pour une entité donnée.
+
+    Args:
+        entity (str): Le nom de l'entité.
+    Returns:
+        tuple: Un tuple contenant les rôles d'accès en lecture, écriture et suppression (str).
+    """
+    read_role = []
+    write_role = []
+    delete_role = []
+    with open("config/entities.txt", "r", encoding="utf-8") as f:
+        lines = [line.strip() for line in f.readlines()]
+
+
+    for line in lines:
+        if line.startswith(entity + " "):
+            parts = line.split(" ")
+            for part in range(1, len(parts)):
+                if parts[part].startswith(".r"):
+                    read_role = parts[part+1].split(",")  # Extrait le rôle après '.r'
+                elif parts[part].startswith(".w"):
+                    write_role = parts[part+1].split(",")  # Extrait le rôle après '.w'
+                elif parts[part].startswith(".d"):
+                    delete_role = parts[part+1].split(",")  # Extrait le rôle après '.d'
+
+    if read_role == []:
+        read_role = ["any"]
+    if write_role == []:
+        write_role = ["any"]
+    if delete_role == []:
+        delete_role = ["any"]
+    print(f"Rôles pour l'entité '{entity}': Lecture: {read_role}, Écriture: {write_role}, Suppression: {delete_role}")  # Debug
+
+    return read_role, write_role, delete_role

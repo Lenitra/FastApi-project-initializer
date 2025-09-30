@@ -5,14 +5,33 @@ from app.utils.core.database import engine
 from app.utils.seeds.seed_users import seed_users
 from app.utils.seeds.seed_roles import seed_roles
 from sqlmodel import Session
-# from app.middleware.auth_middleware import AuthMiddleware  # Removed to preserve Swagger docs
 
 import pkgutil
 import importlib
 import pathlib
 
-# Import all entities to register them with SQLModel
-from app.entities.auth import user
+# Importer automatiquement les entités pour s'assurer qu'elles sont enregistrées
+
+entities_dir = pathlib.Path(__file__).parent / "entities"
+
+
+
+for module_info in pkgutil.iter_modules([str(entities_dir)]):
+    name = module_info.name
+    if name.startswith("_"):
+        continue
+
+    try:
+        importlib.import_module(f"app.entities.{name}")
+    except ImportError as e:
+        print(f"❌ Warning: Could not import entity {name}: {e}")
+        print(f"❌ Warning: Could not import entity {name}: {e}")
+        print(f"❌ Warning: Could not import entity {name}: {e}")
+        print(f"❌ Warning: Could not import entity {name}: {e}")
+        print(f"❌ Warning: Could not import entity {name}: {e}")
+        print(f"❌ Warning: Could not import entity {name}: {e}")
+        print(f"❌ Warning: Could not import entity {name}: {e}")
+        print(f"❌ Warning: Could not import entity {name}: {e}")
 
 # Create database tables (drop and recreate to ensure schema is up to date)
 SQLModel.metadata.drop_all(engine)

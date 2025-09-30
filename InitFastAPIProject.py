@@ -4,7 +4,7 @@ import os
 import time
 import shutil
 
-from utils import get_entities
+from utils import get_acces_for_entities, get_entities
 
 
 def create_env_config(project_path="generated"):
@@ -98,13 +98,14 @@ def create_custom_entities(base_path="."):
         repositories_path = os.path.join(
             base_path, "app", "repositories", entity.lower() + "_repository.py"
         )
+        
 
         with open(sqlmodels_path, "w", encoding="utf-8") as f:
             f.write(generate_sql_model(entity, entities[entity]))
             print(f"📄 Fichier généré : {sqlmodels_path}")
 
         with open(routers_path, "w", encoding="utf-8") as f:
-            f.write(generate_getters_routes(entity))
+            f.write(generate_default_routes(entity))
             print(f"📄 Fichier généré : {routers_path}")
 
         with open(repositories_path, "w", encoding="utf-8") as f:
@@ -125,7 +126,8 @@ class {entity_name}Repository(BaseRepository[{entity_name}]):
 
 def generate_sql_model(entity_name: str, attributes: list):
     sql_content = "from sqlmodel import SQLModel, Field\n"
-    sql_content += "from datetime import datetime, date\n\n"
+    sql_content += "from datetime import datetime, date\n"
+    sql_content += "from typing import Optional\n\n"
 
     # Add imports for custom types
     custom_types = set()
@@ -133,12 +135,11 @@ def generate_sql_model(entity_name: str, attributes: list):
         attr_parts = attr.split()
         if len(attr_parts) > 1 and _is_custom_type(attr_parts[1]):
             custom_types.add(attr_parts[1])
-    
+
     for custom_type in custom_types:
         sql_content += f"from app.entities.{custom_type.lower()} import {custom_type}\n"
 
     sql_content += f"\nclass {entity_name}(SQLModel, table=True):\n"
-    sql_content += f'    __tablename__ = "{entity_name.lower()}"\n\n'
     sql_content += "    id: int = Field(default=None, primary_key=True)\n"
 
     for attr in attributes:
@@ -148,9 +149,13 @@ def generate_sql_model(entity_name: str, attributes: list):
 
         # Parse modifiers
         modifiers = _parse_attribute_modifiers(attr)
-        
+
         # Convert Python types to SQLModel types
         field_type = _convert_type_to_sqlmodel(var_type)
+
+        # Make field optional if not required (not .nn and no default)
+        if not modifiers['not_null'] and modifiers['default'] is None:
+            field_type = f"Optional[{field_type}]"
 
         # Build Field parameters
         field_params = _build_field_parameters(modifiers, var_type)
@@ -287,7 +292,7 @@ def parse_py_types_to_sql_type(py_type: str) -> str:
         return py_type
 
 
-def generate_getters_routes(entity_name: str) -> str:
+def generate_default_routes(entity_name: str) -> str:
     lname = entity_name.lower()
     plural = lname
     if lname.endswith("s"):
@@ -295,45 +300,54 @@ def generate_getters_routes(entity_name: str) -> str:
     else:
         plural = lname + "s"
 
-    return f'''from fastapi import Body, APIRouter, HTTPException, Depends
+
+    roles = get_acces_for_entities(entity_name)
+    read_roles = roles[0]
+    write_roles = roles[1]
+    delete_roles = roles[2]
+
+
+    toret = f'''from fastapi import Body, APIRouter, HTTPException, Depends
 from app.entities.{lname} import {entity_name}
 from sqlalchemy.orm import Session
 from app.repositories.{lname}_repository import {entity_name}Repository
 from app.utils.core.database import get_db
+from app.utils.auth.roles import require_role
 
 
 router = APIRouter(prefix="/{plural}", tags=["{entity_name}"])
 repo = {entity_name}Repository()
 
-@router.get("/", response_model=list[{entity_name}])
-def get_all_{plural}(db: Session = Depends(get_db)):
+@router.get("/", response_model=list[{entity_name}], description="Route disponible pour les rôles: {read_roles}")
+def get_all_{plural}(db: Session = Depends(get_db), current_user=Depends(require_role({read_roles}))):
     return repo.list(db)
 
-@router.get("/{{id}}", response_model={entity_name})
-def get_{lname}_by_id(id: int, db: Session = Depends(get_db)):
+@router.get("/{{id}}", response_model={entity_name}, description="Route disponible pour les rôles: {read_roles}")
+def get_{lname}_by_id(id: int, db: Session = Depends(get_db), current_user=Depends(require_role({read_roles}))):
     obj = repo.get_by_id(db, id)
     if not obj:
         raise HTTPException(status_code=404, detail="{entity_name} not found")
     return obj
 
-@router.post("/", response_model={entity_name}, status_code=201)
-def create_{lname}(payload: dict = Body(...), db: Session = Depends(get_db)):
+@router.post("/", response_model={entity_name}, status_code=201, description="Route disponible pour les rôles: {write_roles}")
+def create_{lname}(payload: dict = Body(...), db: Session = Depends(get_db), current_user=Depends(require_role({write_roles}))):
     return repo.save(db, payload)
 
-@router.put("/{{id}}", response_model={entity_name})
-def update_{lname}(id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
+@router.put("/{{id}}", response_model={entity_name}, description="Route disponible pour les rôles: {write_roles}")
+def update_{lname}(id: int, payload: dict = Body(...), db: Session = Depends(get_db), current_user=Depends(require_role({write_roles}))):
     obj = repo.save(db, id, payload)
     if not obj:
         raise HTTPException(status_code=404, detail="{entity_name} not found")
     return obj
 
-@router.delete("/{{id}}", status_code=204)
-def delete_{lname}(id: int, db: Session = Depends(get_db)):
+@router.delete("/{{id}}", status_code=204, description="Route disponible pour les rôles: {delete_roles}")
+def delete_{lname}(id: int, db: Session = Depends(get_db), current_user=Depends(require_role({delete_roles}))):
     ok = repo.delete(db, id)
     if not ok:
         raise HTTPException(status_code=404, detail="{entity_name} not found")
 '''
 
+    return toret
 
 def copy_base_template(project_path):
     local_base_path = os.path.abspath(

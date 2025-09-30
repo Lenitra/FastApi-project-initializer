@@ -81,14 +81,16 @@ generated/
 ### Syntaxe des entités
 
 ```txt
-EntityName .r Role .w Role .d Role
+EntityName .r Role,Role .w Role .d any
 - attribute_name type.modifier1.modifier2
 ```
 
 **Rôles d'autorisation :**
 - `.r role` : Lecture (GET)
-- `.w role` : Écriture (POST, PATCH) 
+- `.w role` : Écriture (POST, PUT, PATCH) 
 - `.d role` : Suppression (DELETE)
+- `any`, `*` ou non défini : Tous les rôles
+⚠️ Pas d'espace entre les rôles et les virgules dans le cas de multiples rôles.
 
 ### Types supportés
 
