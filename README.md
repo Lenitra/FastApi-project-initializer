@@ -34,7 +34,7 @@ Product .w manager .d admin
 
 ### 2. Génération du projet
 ```bash
-python InitFastAPIProject.py
+scripts/run.bat
 ```
 
 ### 3. Lancement de l'application
@@ -205,7 +205,7 @@ Le système génère automatiquement :
 
 ## ⚙️ Configuration
 
-Le fichier `.env` généré contient :
+Le fichier par défaut `.env` généré contient :
 ```env
 # Base de données
 DB_HOST=localhost
@@ -222,6 +222,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 # Debug
 DEBUG=True
 ```
+Ajoutez vos variables personnalisées dans `config/add_to_env.txt` avant la génération.
 
 ## 🔄 Workflow de développement
 
@@ -229,7 +230,7 @@ DEBUG=True
 2. **Définir** vos variables d'environnement supplémentaires `config/add_to_env.txt`
 3. **Générer** le projet avec `python InitFastAPIProject.py`
 4. **Personnaliser** la configuration dans `generated/.env`
-5. **Lancer en local** les dépendances avec `generated/script/setup.bat` puis executer `generated/script/run.bat`
+5. **Lancer en local** installer les dépendances avec `generated/script/setup.bat` puis executer `generated/script/run.bat`
 6. **Déployer sur docker** l'application avec `generated/script/deploy_docker.bat`
 
 ## 📚 Fonctionnalités avancées
@@ -239,6 +240,7 @@ DEBUG=True
 - **Relations automatiques** : Foreign keys et imports d'entités
 - **Environment flexible** : Configuration via `config/add_to_env.txt`
 - **Scripts de déploiement** : Setup et run automatiques
+- **Environnements multiples** : dev, docker via `envs/`
 
 ---
 
