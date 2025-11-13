@@ -248,3 +248,7 @@ Ajoutez vos variables personnalisées dans `config/add_to_env.txt` avant la gén
 
 - Support des attributs de type List, Dict, Set
 - Création dynamique d'utilisateurs initiaux via un fichier de config
+- Pouvoir mettre de la doc swagger dans les endpoints et les paramètres depuis entities.txt
+- Ajouter la gestion des migrations de base de données (intégration Alembic)
+- Remplacer le fichier txt avec le modèle de données par un fichier json ?
+
